@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}Ultra Koruma{% endblock %}
+{% block heading %}Ultra Koruma{% endblock %}
+{% block subheading %}Sunucu guard katmanını merkezden yönetin, otomatik karantina ve yedek akışını buradan ayarlayın.{% endblock %}
+
+{% macro render_picker(label, input_name, selected_ids, selected_items, options, search_placeholder, empty_label, max_select=0, lazy=False) -%}
+<label
+  class="role-field"
+  data-picker-field
+  data-picker-empty-label="{{ empty_label }}"
+  data-picker-max="{{ max_select }}"
+  {% if lazy %}data-picker-lazy="1"{% endif %}>
+  <span class="role-field-label">{{ label }}</span>
+  <div class="role-picker-surface">
+    <div class="role-picker-toolbar">
+      <input
+        class="role-filter-input"
+        type="text"
+        placeholder="{{ search_placeholder }}"
+        data-picker-filter>
+      <span class="role-picker-count" data-picker-count>
+        {% if selected_items %}
+          {% if max_select == 1 %}
+            Seçildi
+          {% else %}
+            {{ selected_items | length }} seçili
+          {% endif %}
+        {% else %}
+          {{ empty_label }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="role-selection-summary" data-picker-summary>
+      {% if selected_items %}
+        {% for item in selected_items %}
+        <button type="button" class="role-chip" title="{{ item.item_id }}" data-chip-id="{{ item.item_id }}">
+          <span class="role-chip-dot" style="background: {{ item.item_color }}"></span>
+          <span>{{ item.item_name }}</span>
+          <span class="role-chip-remove">x</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        <span class="role-picker-placeholder">{{ empty_label }}</span>
+      {% endif %}
+    </div>
+    <div class="role-option-grid" data-picker-options>
+      {% if lazy %}
+        {% for item in options if item.item_id in selected_ids %}
+        <button
+          type="button"
+          class="role-option-card is-selected"
+          data-picker-option
+          data-option-id="{{ item.item_id }}"
+          data-option-name="{{ item.item_name }}"
+          data-option-subtitle="{{ item.item_subtitle }}"
+          data-option-color="{{ item.item_color }}"
+          data-option-search="{{ item.item_search }}"
+          aria-pressed="true">
+          <span class="role-option-card-dot" style="background: {{ item.item_color }}"></span>
+          <span class="role-option-card-text">
+            <strong>{{ item.item_name }}</strong>
+            <span>{{ item.item_subtitle }}</span>
+          </span>
+          <span class="role-option-card-state" data-picker-check>Seçildi</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        {% for item in options %}
+        {% set is_selected = item.item_id in selected_ids %}
+        <button
+          type="button"
+          class="role-option-card {% if is_selected %}is-selected{% endif %}"
+          data-picker-option
+          data-option-id="{{ item.item_id }}"
+          data-option-name="{{ item.item_name }}"
+          data-option-subtitle="{{ item.item_subtitle }}"
+          data-option-color="{{ item.item_color }}"
+          data-option-search="{{ item.item_search }}"
+          aria-pressed="{% if is_selected %}true{% else %}false{% endif %}">
+          <span class="role-option-card-dot" style="background: {{ item.item_color }}"></span>
+          <span class="role-option-card-text">
+            <strong>{{ item.item_name }}</strong>
+            <span>{{ item.item_subtitle }}</span>
+          </span>
+          <span class="role-option-card-state" data-picker-check>
+            {% if is_selected %}Seçildi{% else %}Ekle{% endif %}
+          </span>
+        </button>
+        {% endfor %}
+      {% endif %}
+      <div class="role-option-empty" data-picker-empty {% if options %}hidden{% endif %}>
+        Aramana uyan seçenek bulunamadı.
+      </div>
+    </div>
+    {% if lazy %}
+    <script type="application/json" data-picker-payload>[
+      {%- for item in options -%}
+      {"id":{{ item.item_id | tojson }},"name":{{ item.item_name | tojson }},"subtitle":{{ item.item_subtitle | tojson }},"color":{{ item.item_color | tojson }},"search":{{ item.item_search | tojson }}}{% if not loop.last %},{% endif %}
+      {%- endfor -%}
+    ]</script>
+    {% endif %}
+    <select class="role-native-select" name="{{ input_name }}" multiple data-picker-select tabindex="-1" aria-hidden="true">
+      {% if lazy %}
+        {% for item in options if item.item_id in selected_ids %}
+        <option value="{{ item.item_id }}" selected>{{ item.item_name }}</option>
+        {% endfor %}
+      {% else %}
+        {% for item in options %}
+        <option value="{{ item.item_id }}" {% if item.item_id in selected_ids %}selected{% endif %}>
+          {{ item.item_name }}
+        </option>
+        {% endfor %}
+      {% endif %}
+      {% for sel in selected_items %}
+      {% set found = namespace(val=false) %}
+      {% for opt in options %}
+        {% if opt.item_id == sel.item_id %}{% set found.val = true %}{% endif %}
+      {% endfor %}
+      {% if not found.val %}
+      <option value="{{ sel.item_id }}" selected>{{ sel.item_name }}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+</label>
+{%- endmacro %}
+
+{% block content %}
+{% if saved %}
+<section class="flash success">Ultra koruma ayarları kaydedildi.</section>
+{% endif %}
+{% if backup_created %}
+<section class="flash success">Sunucu yedeği başarıyla oluşturuldu.</section>
+{% endif %}
+
+<div class="nx-hero nx-guard-hero nx-mb-md" data-nx="tile">
+  <div class="nx-hero__eyebrow">ULTRA PROTECTION</div>
+  <h1 class="nx-hero__title">Guard katmanını tek merkezden yönetin</h1>
+  <p class="nx-hero__desc">Whitelist, blacklist, otomatik karantina, saat bazlı sert mod ve yedekleme aynı akışta.</p>
+  <div class="nx-hero__stats">
+    {% for card in protection.summary_cards %}
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ card.value }}</span>
+      <span class="nx-hero__stat-label">{{ card.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" action="/guards" class="nx-guard-form">
+  <section class="panel nx-guard-panel" data-nx="tile">
+    <div class="panel-head nx-guard-panel__head">
+      <div>
+        <h3><i class="fas fa-shield-halved"></i> Ana Kontrol</h3>
+        <p>Tüm guard otomasyonunu, karantina rolünü ve zaman penceresini burada yönetin.</p>
+      </div>
+      <label class="nx-guard-switch">
+        <input type="checkbox" name="protection_enabled" {% if config.ultraProtection.enabled %}checked{% endif %}>
+        <span>Ultra Koruma Aktif</span>
+      </label>
+    </div>
+
+    <div class="nx-grid-2 nx-guard-grid">
+      <div class="nx-guard-stack">
+        {{ render_picker("Otomatik Karantina Rolü", "quarantine_role_id", [config.ultraProtection.quarantineRoleId] if config.ultraProtection.quarantineRoleId else [], selected_items.quarantineRoleId, role_picker_options, "Rol ara ve seç", "Rol seçilmedi", 1) }}
+      </div>
+
+      <div class="nx-guard-settings-card" data-nx="tile">
+        <div class="nx-guard-settings-card__head">
+          <strong>Saat Bazlı Koruma Modu</strong>
+          <label class="nx-guard-mini-toggle">
+            <input type="checkbox" name="schedule_enabled" {% if config.ultraProtection.schedule.enabled %}checked{% endif %}>
+            <span>Aktif</span>
+          </label>
+        </div>
+        <p>Bu mod açıkken otomatik guard müdahaleleri yalnızca seçilen saat aralığında devreye girer.</p>
+        <div class="form-grid nx-guard-hour-grid">
+          <label>Başlangıç Saati
+            <input type="number" min="0" max="23" name="schedule_start_hour" value="{{ config.ultraProtection.schedule.startHour }}">
+          </label>
+          <label>Bitiş Saati
+            <input type="number" min="0" max="23" name="schedule_end_hour" value="{{ config.ultraProtection.schedule.endHour }}">
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="nx-grid-2 nx-mb-md">
+    <section class="panel nx-guard-panel" data-nx="tile">
+      <div class="panel-head nx-guard-panel__head">
+        <div>
+          <h3><i class="fas fa-user-shield"></i> Whitelist</h3>
+          <p>Bu listedeki kullanıcılar ve roller guard müdahalesinden muaf tutulur.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        {{ render_picker("Whitelist Üyeler", "whitelist_user_ids", config.ultraProtection.whitelist.userIds, selected_items.whitelistUserIds, member_picker_options, "Üye ara ve seç", "Üye seçilmedi", 0, True) }}
+        {{ render_picker("Whitelist Roller", "whitelist_role_ids", config.ultraProtection.whitelist.roleIds, selected_items.whitelistRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      </div>
+    </section>
+
+    <section class="panel nx-guard-panel" data-nx="tile">
+      <div class="panel-head nx-guard-panel__head">
+        <div>
+          <h3><i class="fas fa-user-lock"></i> Blacklist</h3>
+          <p>Bu listedeki kullanıcılar ve roller daha agresif koruma ve kritik seviye işleme alınır.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        {{ render_picker("Blacklist Üyeler", "blacklist_user_ids", config.ultraProtection.blacklist.userIds, selected_items.blacklistUserIds, member_picker_options, "Üye ara ve seç", "Üye seçilmedi", 0, True) }}
+        {{ render_picker("Blacklist Roller", "blacklist_role_ids", config.ultraProtection.blacklist.roleIds, selected_items.blacklistRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      </div>
+    </section>
+  </div>
+
+  {% for category in protection.categories %}
+  <section class="panel nx-guard-panel nx-guard-category nx-mb-md" data-nx="tile" data-guard-category="{{ category.key }}">
+    <div class="panel-head nx-guard-panel__head nx-guard-category__head">
+      <div>
+        <h3><i class="{{ category.icon }}"></i> {{ category.title }}</h3>
+        <p>{{ category.description }}</p>
+      </div>
+      <span class="nx-badge nx-guard-category__badge">{{ category.active_count }} / {{ category.features | length }} aktif</span>
+    </div>
+
+    <div class="nx-guard-feature-grid">
+      {% for guard in category.features %}
+      {% set gcfg = guard.config %}
+      {% set gprefix = guard.form_prefix %}
+      {% set adv_open = gcfg.logOnly or gcfg.severityOverride not in (none, 'inherit') or gcfg.cooldownSeconds or (gcfg.whitelistRoleIds and gcfg.whitelistRoleIds|length > 0) %}
+      <article class="nx-guard-feature nx-guard-feature--{{ guard.category }}{% if gcfg.enabled %} is-enabled{% endif %}" data-nx="tile" data-guard-key="{{ guard.key }}">
+        <div class="nx-guard-feature__head">
+          <div class="nx-guard-feature__heading">
+            <span class="nx-guard-feature__icon {{ guard.accent }}"><i class="{{ guard.icon }}"></i></span>
+            <div>
+              <strong>{{ guard.title }}</strong>
+              <p>{{ guard.description }}</p>
+            </div>
+          </div>
+          <label class="nx-guard-mini-toggle">
+            <input type="checkbox" name="{{ gprefix }}_enabled" {% if gcfg.enabled %}checked{% endif %}>
+            <span>Aktif</span>
+          </label>
+        </div>
+
+        {# Quarantine toggle (not for settings rollback) #}
+        {% if guard.key != 'settingsRollbackGuard' %}
+        <label class="nx-guard-inline-check">
+          <input type="checkbox" name="{{ gprefix }}_quarantine" {% if gcfg.quarantine %}checked{% endif %}>
+          <span>{{ guard.quarantine_label or 'Tetiklenince karantina uygula' }}</span>
+        </label>
+        {% endif %}
+
+        {# Channel / Category guard: restoreOnDelete #}
+        {% if guard.key in ('channelGuard', 'categoryGuard') %}
+        <label class="nx-guard-inline-check">
+          <input type="checkbox" name="{{ gprefix }}_restore_on_delete" {% if gcfg.restoreOnDelete %}checked{% endif %}>
+          <span>Silinen {{ 'kategoriyi' if guard.key == 'categoryGuard' else 'kanalı' }} yedekten otomatik geri yükle</span>
+        </label>
+        {% endif %}
+
+        {# Bot guard: kick + allowed bots #}
+        {% if guard.key == 'botGuard' %}
+        <label class="nx-guard-inline-check">
+          <input type="checkbox" name="{{ gprefix }}_kick_unauthorized" {% if gcfg.kickUnauthorizedBots %}checked{% endif %}>
+          <span>Eklenen yetkisiz botu otomatik at</span>
+        </label>
+        <div class="nx-guard-subfield">
+          {{ render_picker("İzinli Bot'lar (beyaz liste)", "bot_guard_allowed_bot_ids", gcfg.allowedBotIds or [], selected_items.botGuard_allowedBotIds, member_picker_options, "Bot ara ve seç", "Bot seçilmedi", 0, True) }}
+        </div>
+        {% endif %}
+
+        {# Role guard specific controls #}
+        {% if guard.key == 'roleGuard' %}
+        <label class="nx-guard-inline-check">
+          <input type="checkbox" name="{{ gprefix }}_auto_delete_risky_new_roles" {% if gcfg.autoDeleteRiskyNewRoles %}checked{% endif %}>
+          <span>Yeni oluşturulan riskli rolleri otomatik sil</span>
+        </label>
+        <div class="nx-guard-subfield">
+          <span class="nx-guard-subfield__label">Kısıtlı izinler (bu izinleri içeren rol değişiklikleri tetikleyici sayılır)</span>
+          <div class="nx-guard-checkgrid">
+            {% for perm in protection.role_permission_options %}
+            <label class="nx-guard-chip-check">
+              <input type="checkbox" name="role_guard_restricted_permissions" value="{{ perm.value }}" {% if perm.value in (gcfg.restrictedPermissions or []) %}checked{% endif %}>
+              <span>{{ perm.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="nx-guard-subfield">
+          {{ render_picker("Korunacak kritik roller (silinince geri yüklenir)", "role_guard_protected_role_ids", gcfg.protectedRoleIds or [], selected_items.roleGuard_protectedRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+        </div>
+        {% endif %}
+
+        {# Settings rollback guard #}
+        {% if guard.key == 'settingsRollbackGuard' %}
+        <div class="nx-guard-subfield">
+          <span class="nx-guard-subfield__label">Geri alınacak alanlar</span>
+          <div class="nx-guard-checkgrid">
+            {% for field in protection.rollback_field_options %}
+            <label class="nx-guard-chip-check">
+              <input type="checkbox" name="settings_rollback_guard_rollback_fields" value="{{ field.value }}" {% if field.value in (gcfg.rollbackFields or []) %}checked{% endif %}>
+              <span>{{ field.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>Cooldown (sn)
+            <input type="number" min="0" max="3600" step="5" name="settings_rollback_guard_cooldown_seconds" value="{{ gcfg.cooldownSeconds or 30 }}">
+          </label>
+        </div>
+        {% endif %}
+
+        {# Bulk action guard specific #}
+        {% if guard.key == 'bulkActionGuard' %}
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>Pencere (sn)
+            <input type="number" min="30" max="3600" step="30" name="bulk_action_window_seconds" value="{{ gcfg.windowSeconds or 120 }}">
+          </label>
+          <label>Maks. işlem
+            <input type="number" min="2" max="100" step="1" name="bulk_action_max_actions" value="{{ gcfg.maxActions or 3 }}">
+          </label>
+        </div>
+        {% endif %}
+
+        {# Anti-Raid guard specific #}
+        {% if guard.key == 'antiRaidGuard' %}
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>Pencere (sn)
+            <input type="number" min="10" max="600" step="5" name="anti_raid_guard_window_seconds" value="{{ gcfg.windowSeconds or 30 }}">
+          </label>
+          <label>Katılım eşiği
+            <input type="number" min="2" max="200" step="1" name="anti_raid_guard_join_threshold" value="{{ gcfg.joinThreshold or 8 }}">
+          </label>
+          <label>Min. hesap yaşı (gün)
+            <input type="number" min="0" max="365" step="1" name="anti_raid_guard_min_account_age_days" value="{{ gcfg.minAccountAgeDays or 7 }}">
+          </label>
+          <label>Raid mod süresi (dk)
+            <input type="number" min="1" max="1440" step="1" name="anti_raid_guard_raid_mode_cooldown_minutes" value="{{ gcfg.raidModeCooldownMinutes or 15 }}">
+          </label>
+          <label>Raid aksiyonu
+            <select name="anti_raid_guard_raid_action">
+              {% for opt in protection.antiraid_action_options %}
+              <option value="{{ opt.value }}" {% if (gcfg.raidAction or 'kick') == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        {% endif %}
+
+        {# Invite/link guard specific #}
+        {% if guard.key == 'inviteLinkGuard' %}
+        <label class="nx-guard-inline-check">
+          <input type="checkbox" name="invite_link_guard_block_discord_invites" {% if gcfg.blockDiscordInvites %}checked{% endif %}>
+          <span>Discord davet bağlantılarını engelle</span>
+        </label>
+        <div class="nx-guard-subfield">
+          <label class="role-field-label" for="invite_link_guard_allowed_domains">İzinli domainler</label>
+          <textarea id="invite_link_guard_allowed_domains" name="invite_link_guard_allowed_domains" rows="3" placeholder="youtube.com, twitch.tv">{{ (gcfg.allowedDomains or []) | join('\n') }}</textarea>
+          <small class="nx-guard-subfield__hint">Her satıra bir domain yazın. Bu domainler filtrelemeden muaf tutulur.</small>
+        </div>
+        <div class="nx-guard-subfield">
+          {{ render_picker("İhlal kontrolünden muaf kanallar", "invite_link_guard_exempt_channel_ids", gcfg.exemptChannelIds or [], selected_items.inviteLinkGuard_exemptChannelIds, channel_picker_options, "Kanal ara ve seç", "Kanal seçilmedi") }}
+        </div>
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>İhlal aksiyonu
+            <select name="invite_link_guard_action_on_violation">
+              {% for opt in protection.invite_action_options %}
+              <option value="{{ opt.value }}" {% if (gcfg.actionOnViolation or 'delete') == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        {% endif %}
+
+        {# Message nuke guard specific #}
+        {% if guard.key == 'messageNukeGuard' %}
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>Pencere (sn)
+            <input type="number" min="10" max="600" step="5" name="message_nuke_guard_window_seconds" value="{{ gcfg.windowSeconds or 30 }}">
+          </label>
+          <label>Tekil silme eşiği
+            <input type="number" min="3" max="500" step="1" name="message_nuke_guard_delete_threshold" value="{{ gcfg.deleteThreshold or 10 }}">
+          </label>
+          <label>Bulk silme eşiği
+            <input type="number" min="1" max="50" step="1" name="message_nuke_guard_bulk_delete_threshold" value="{{ gcfg.bulkDeleteThreshold or 2 }}">
+          </label>
+        </div>
+        {% endif %}
+
+        {# AutoMod guard specific #}
+        {% if guard.key == 'autoModGuard' %}
+        <div class="nx-guard-checkgrid">
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_links" {% if gcfg.blockLinks %}checked{% endif %}>
+            <span>Tüm Linkleri Engelle</span>
+          </label>
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_invites" {% if gcfg.blockInvites %}checked{% endif %}>
+            <span>Davetleri (Invite) Engelle</span>
+          </label>
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_profanity" {% if gcfg.blockProfanity %}checked{% endif %}>
+            <span>Küfür & Hakaret Filtresi (Discord Preset)</span>
+          </label>
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_spam" {% if gcfg.blockSpam %}checked{% endif %}>
+            <span>Yapay Zeka Anti-Spam (Discord Preset)</span>
+          </label>
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_mass_mentions" {% if gcfg.blockMassMentions %}checked{% endif %}>
+            <span>Toplu Etiket (Mass Mention) Engelle</span>
+          </label>
+          <label class="nx-guard-chip-check">
+            <input type="checkbox" name="auto_mod_guard_block_staff_mentions" {% if gcfg.blockStaffMentions %}checked{% endif %}>
+            <span>Yetkili Etiket Kalkanı (Staff Mention Guard)</span>
+          </label>
+        </div>
+        <div class="form-grid nx-guard-bulk-grid">
+          <label>Maks. Etiket (Mass Mention)
+            <input type="number" min="1" max="50" step="1" name="auto_mod_guard_mass_mention_threshold" value="{{ gcfg.massMentionThreshold or 5 }}">
+          </label>
+          <label>Timeout Süresi (dk)
+            <input type="number" min="1" max="40320" step="1" name="auto_mod_guard_timeout_minutes" value="{{ gcfg.timeoutMinutes or 10 }}">
+          </label>
+          <label>Aksiyon Tipi
+            <select name="auto_mod_guard_action_type">
+              <option value="block" {% if (gcfg.actionType or 'block') == 'block' %}selected{% endif %}>Mesajı Engelle (Block)</option>
+              <option value="timeout" {% if (gcfg.actionType or 'block') == 'timeout' %}selected{% endif %}>Mesajı Engelle & Timeout At</option>
+              <option value="alert" {% if (gcfg.actionType or 'block') == 'alert' %}selected{% endif %}>Sadece Uyarı (Alert)</option>
+            </select>
+          </label>
+        </div>
+        <div class="nx-guard-subfield">
+          {{ render_picker("Log/Bildirim Kanalı", "auto_mod_guard_alert_channel_id", [gcfg.alertChannelId] if gcfg.alertChannelId else [], selected_items.autoModGuard_alertChannelId, channel_picker_options, "Kanal ara ve seç", "Varsayılan Uyarı Kanalı", max_select=1) }}
+        </div>
+        <div class="nx-guard-subfield">
+          {{ render_picker("Muaf Roller", "auto_mod_guard_exempt_role_ids", gcfg.exemptRoleIds or [], selected_items.autoModGuard_exemptRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+        </div>
+        <div class="nx-guard-subfield">
+          {{ render_picker("Muaf Kanallar", "auto_mod_guard_exempt_channel_ids", gcfg.exemptChannelIds or [], selected_items.autoModGuard_exemptChannelIds, channel_picker_options, "Kanal ara ve seç", "Kanal seçilmedi") }}
+        </div>
+        {% endif %}
+
+        {# Advanced collapsible panel (for guards that support it) #}
+        {% if guard.supports_advanced %}
+        <details class="nx-guard-advanced" {% if adv_open %}open{% endif %}>
+          <summary>
+            <span><i class="fas fa-sliders"></i> Gelişmiş Ayarlar</span>
+            <i class="fas fa-chevron-down nx-guard-advanced__chev"></i>
+          </summary>
+          <div class="nx-guard-advanced__body">
+            <div class="form-grid nx-guard-bulk-grid">
+              <label class="nx-guard-inline-check nx-guard-inline-check--span">
+                <input type="checkbox" name="{{ gprefix }}_log_only" {% if gcfg.logOnly %}checked{% endif %}>
+                <span>Sadece logla (aksiyon alma)</span>
+              </label>
+              <label>Önem seviyesi
+                <select name="{{ gprefix }}_severity_override">
+                  {% for opt in protection.severity_options %}
+                  <option value="{{ opt.value }}" {% if (gcfg.severityOverride or 'inherit') == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>Aksiyon tipi
+                <select name="{{ gprefix }}_action_tier">
+                  {% for opt in protection.action_tier_options %}
+                  <option value="{{ opt.value }}" {% if (gcfg.actionTier or 'quarantine') == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>Audit log penceresi (sn)
+                <input type="number" min="30" max="900" step="10" name="{{ gprefix }}_audit_window_seconds" value="{{ gcfg.auditWindowSeconds or 180 }}">
+              </label>
+              <label>Cooldown (sn, aynı aktör)
+                <input type="number" min="0" max="3600" step="5" name="{{ gprefix }}_cooldown_seconds" value="{{ gcfg.cooldownSeconds or 0 }}">
+              </label>
+            </div>
+            <div class="nx-guard-subfield">
+              {{ render_picker("Bu guard için muaf roller", gprefix ~ "_whitelist_role_ids", gcfg.whitelistRoleIds or [], selected_items[guard.key ~ "_whitelistRoleIds"], role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+            </div>
+          </div>
+        </details>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <div class="nx-grid-2">
+    <section class="panel nx-guard-panel" data-nx="tile">
+      <div class="panel-head nx-guard-panel__head">
+        <div>
+          <h3><i class="fas fa-database"></i> Server Backup</h3>
+          <p>Rol ve kanal kataloglarının snapshot'ını alır. Şimdilik yedek üretme ve görüntüleme odaklı çalışır.</p>
+        </div>
+      </div>
+
+      <div class="nx-guard-feature-grid">
+        <article class="nx-guard-feature" data-nx="tile">
+          <div class="nx-guard-feature__head">
+            <div>
+              <strong>Yedekleme Modülü</strong>
+              <p>Yedek kartlarını ve otomatik boot snapshot'ını aktif eder</p>
+            </div>
+            <label class="nx-guard-mini-toggle"><input type="checkbox" name="server_backup_enabled" {% if config.ultraProtection.serverBackup.enabled %}checked{% endif %}><span>Aktif</span></label>
+          </div>
+          <label class="nx-guard-inline-check"><input type="checkbox" name="server_backup_auto_boot" {% if config.ultraProtection.serverBackup.autoCreateOnBoot %}checked{% endif %}><span>Bot açılışında otomatik snapshot al</span></label>
+        </article>
+      </div>
+
+      <div class="actions-row actions-row--center nx-guard-actions">
+        <button type="submit" class="primary-button action-button">Ultra Korumayı Kaydet</button>
+      </div>
+    </section>
+
+    <section class="panel nx-guard-panel" data-nx="tile">
+      <div class="panel-head nx-guard-panel__head">
+        <div>
+          <h3><i class="fas fa-box-archive"></i> Son Yedekler</h3>
+          <p>En güncel server backup snapshot'ları</p>
+        </div>
+      </div>
+
+      <div class="nx-guard-backup-list">
+        {% for backup in protection.backups %}
+        <article class="nx-guard-backup-row" data-nx="tile">
+          <div class="nx-guard-backup-row__body">
+            <div class="nx-guard-backup-row__head">
+              <strong>{{ backup.type_label }}</strong>
+              <span class="nx-badge">{{ backup.created_at_relative }}</span>
+            </div>
+            <div class="nx-guard-backup-row__meta">
+              <span>{{ backup.created_at_label }}</span>
+              <span>{{ backup.role_count }} rol</span>
+              <span>{{ backup.channel_count }} kanal</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="nx-guard-backup-row__delete"
+            hx-delete="/guards/backup/{{ backup.id }}"
+            hx-swap="none"
+            hx-confirm="{{ backup.type_label }} ({{ backup.created_at_label }}) yedek kaydı kalıcı olarak silinecek."
+            data-confirm-title="Yedeği sil"
+            data-confirm-accept="Sil"
+            data-confirm-tone="danger"
+            aria-label="Yedeği sil">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </article>
+        {% else %}
+        <div class="nx-empty">Henüz oluşturulmuş bir server backup bulunmuyor.</div>
+        {% endfor %}
+      </div>
+
+      <div class="nx-guard-backup-action">
+        <button
+          type="submit"
+          formaction="/guards/backup"
+          formmethod="post"
+          class="primary-button secondary-button action-button">
+          Şimdi Yedek Oluştur
+        </button>
+      </div>
+    </section>
+  </div>
+</form>
+{% endblock %}

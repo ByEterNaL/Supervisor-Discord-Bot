@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Ticketlar{% endblock %}
+{% block heading %}Destek Talepleri{% endblock %}
+{% block subheading %}Destek talebi istatistikleri ve yetkili performansı{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="nx-hero" data-nx="tile">
+  <div class="nx-hero__eyebrow">◈ {{ scene.copy.eyebrow }}</div>
+  <h1 class="nx-hero__title">{{ scene.copy.title }}</h1>
+  <p class="nx-hero__desc">{{ scene.copy.description }}</p>
+</div>
+
+<!-- Pipeline Flow -->
+<div class="nx-tile nx-mb-md" data-nx="tile">
+  <div class="nx-pipeline">
+    <div class="nx-pipeline__node" data-nx="tile">
+      <span class="nx-pipeline__node-val">{{ scene.summary.total_tickets }}</span>
+      <span class="nx-pipeline__node-lbl">Toplam</span>
+    </div>
+    <div class="nx-pipeline__connector"></div>
+    <div class="nx-pipeline__node" data-nx="tile">
+      <span class="nx-pipeline__node-val">{{ scene.summary.open_tickets }}</span>
+      <span class="nx-pipeline__node-lbl">Acik</span>
+    </div>
+    <div class="nx-pipeline__connector"></div>
+    <div class="nx-pipeline__node nx-pipeline__node--center" data-nx="tile">
+      <span class="nx-pipeline__node-val count-up" data-value="{{ scene.summary.coverage }}">0</span>
+      <span class="nx-pipeline__node-lbl">Karşılama %</span>
+    </div>
+    <div class="nx-pipeline__connector"></div>
+    <div class="nx-pipeline__node" data-nx="tile">
+      <span class="nx-pipeline__node-val">{{ scene.summary.avg_first_response_hours }}saat</span>
+      <span class="nx-pipeline__node-lbl">Ilk Yanit</span>
+    </div>
+    <div class="nx-pipeline__connector"></div>
+    <div class="nx-pipeline__node" data-nx="tile">
+      <span class="nx-pipeline__node-val">{{ scene.summary.avg_archive_hours }}saat</span>
+      <span class="nx-pipeline__node-lbl">Arsiv</span>
+    </div>
+  </div>
+</div>
+
+<!-- Spotlights -->
+<div class="nx-grid-4 nx-mb-md">
+  {% for item in scene.spotlights %}
+  <div class="nx-spotlight" data-nx="tile" style="border-top-color: {{ item.accent }};">
+    <span class="nx-spotlight__tag" style="color: {{ item.accent }};">{{ item.label }}</span>
+    <span class="nx-spotlight__name">{{ item.name }}</span>
+    <span class="nx-spotlight__metric" style="color: {{ item.accent }};">{{ item.metric }}</span>
+    <span class="nx-spotlight__note">{{ item.note }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Main Grid: Categories + Operators -->
+<div class="nx-grid-2">
+  <!-- Category Pressure -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">🏷️</div>
+      <h2 class="nx-section__title">Kategori Yoğunluğu</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      {% for item in scene.category_lanes %}
+      <div class="nx-category-lane" data-nx="tile">
+        <div class="nx-category-lane__idx" style="background: {{ item.tone }};">{{ loop.index }}</div>
+        <div class="nx-category-lane__info">
+          <div class="nx-category-lane__name">{{ item.label }}</div>
+          <div class="nx-category-lane__count">{{ item.total }} ticket</div>
+        </div>
+        <div class="nx-category-lane__bar-wrap">
+          <div class="nx-category-lane__bar">
+            <div class="nx-category-lane__fill" data-nx-bar="{{ item.percentage }}" style="background: {{ item.tone }};"></div>
+          </div>
+        </div>
+        <div class="nx-category-lane__pct" style="color: {{ item.tone }};">{{ item.percentage }}%</div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Bu periyotta kategori verisi yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right Column: Claimers + Writers -->
+  <div class="nx-flex-col nx-gap-md">
+    <!-- Claim Captains -->
+    <div class="nx-section" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon">🎯</div>
+        <h2 class="nx-section__title">En Çok İlgilenenler</h2>
+      </div>
+
+      <div class="nx-roster">
+        {% for item in scene.claimers %}
+        <div class="nx-roster-row" data-nx="tile">
+          <div class="nx-roster-row__rank {% if item.rank <= 3 %}nx-roster-row__rank--{{ item.rank }}{% endif %}">{{ item.rank }}</div>
+          <div class="nx-roster-row__avatar">
+            {% if item.avatar_url %}
+            <img src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+            {% else %}
+            {{ item.initials }}
+            {% endif %}
+          </div>
+          <div class="nx-roster-row__info">
+            <div class="nx-roster-row__name">{{ item.display_name }}</div>
+            <div class="nx-roster-row__meta">{{ item.count }} claim</div>
+          </div>
+          <div class="nx-roster-row__metrics">
+            <div class="nx-roster-row__metric">
+              <div class="nx-bar__track" style="width: 80px;">
+                <div class="nx-bar__fill" data-nx-bar="{{ item.percentage }}" style="background: #59d0c2;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="nx-empty">Claim verisi yok.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Message Pressure -->
+    <div class="nx-section" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon">✍️</div>
+        <h2 class="nx-section__title">En Çok Mesaj Atanlar</h2>
+      </div>
+
+      <div class="nx-roster">
+        {% for item in scene.writers %}
+        <div class="nx-roster-row" data-nx="tile">
+          <div class="nx-roster-row__rank {% if item.rank <= 3 %}nx-roster-row__rank--{{ item.rank }}{% endif %}">{{ item.rank }}</div>
+          <div class="nx-roster-row__avatar">
+            {% if item.avatar_url %}
+            <img src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+            {% else %}
+            {{ item.initials }}
+            {% endif %}
+          </div>
+          <div class="nx-roster-row__info">
+            <div class="nx-roster-row__name">{{ item.display_name }}</div>
+            <div class="nx-roster-row__meta">{{ item.count }} mesaj</div>
+          </div>
+          <div class="nx-roster-row__metrics">
+            <div class="nx-roster-row__metric">
+              <div class="nx-bar__track" style="width: 80px;">
+                <div class="nx-bar__fill" data-nx-bar="{{ item.percentage }}" style="background: #ff9d3f;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="nx-roster-row__badges">
+            <span class="nx-badge nx-badge--orange">{{ item.percentage }}%</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="nx-empty">Ticket mesaj verisi yok.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Kanal Analizi{% endblock %}
+{% block heading %}Kanal Analizi{% endblock %}
+{% block subheading %}Belirlediğiniz kanallarda son 1 saat mesaj yoğunluğunu izleyip eşik aşılınca otomatik timeout uygulayın.{% endblock %}
+
+{% block content %}
+<div class="nx-grid-1 nx-channel-analysis-page">
+  <section class="panel nx-filters-panel nx-channel-analysis-panel" data-nx="tile">
+    <div class="panel-head nx-filters-panel__head">
+      <h3><i class="fas fa-chart-line"></i> Yeni Kanal Kuralı</h3>
+    </div>
+    <form method="post" action="/channel-analysis" class="settings-form nx-filters-form">
+      <div class="form-grid nx-channel-analysis-form-grid">
+        <label>
+          Hedef Kanal
+          <select name="channel_id" required class="nx-filters-input">
+            <option value="" disabled selected>Kanal seçin...</option>
+            {% for opt in analysis_channel_picker_options %}
+              <option value="{{ opt.item_id }}">{{ opt.item_name }} - {{ opt.item_subtitle }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Son 1 Saat Mesaj Sınırı
+          <input
+            type="number"
+            name="max_messages_per_hour"
+            min="1"
+            step="1"
+            value="10"
+            required
+            class="nx-filters-input"
+            placeholder="Örn. 10"
+          >
+        </label>
+        <label>
+          Timeout Süresi (Dakika)
+          <input
+            type="number"
+            name="timeout_minutes"
+            min="1"
+            step="1"
+            value="10"
+            required
+            class="nx-filters-input"
+            placeholder="Örn. 10"
+          >
+        </label>
+      </div>
+      <div class="actions-row actions-row--center nx-filters-actions">
+        <button type="submit" class="primary-button action-button nx-filters-submit">
+          <i class="fas fa-plus"></i> Kuralı Kaydet
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <div class="nx-grid-2 nx-channel-analysis-grid">
+    <section class="nx-section nx-channel-analysis-section" id="channel-analysis-rules" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon"><i class="fas fa-sliders-h"></i></div>
+        <div>
+          <h2 class="nx-section__title">Aktif Kurallar</h2>
+          <p class="nx-section__subtitle">Her kanal için tek kural tutulur. Aynı kanalı yeniden kaydederseniz mevcut kural güncellenir.</p>
+        </div>
+      </div>
+
+      <div class="nx-roster nx-channel-analysis-rules">
+        {% if channel_analysis.rules %}
+          {% for rule in channel_analysis.rules %}
+            <div class="nx-filter-rule nx-channel-analysis-rule" data-nx="tile">
+              <div class="nx-filter-rule__content">
+                <div class="nx-filter-rule__header">
+                  <span class="nx-badge nx-filter-rule__channel">
+                    <i class="fas fa-hashtag"></i> {{ rule.channel_name }}
+                  </span>
+                  <span class="nx-filter-rule__channel-id">{{ rule.channel_id }}</span>
+                </div>
+                <p class="nx-channel-analysis-rule__summary">{{ rule.summary }}</p>
+                <div class="nx-channel-analysis-rule__stats">
+                  <span class="nx-badge nx-channel-analysis-rule__stat">Saatlik Eşik: {{ rule.max_messages_per_hour }} mesaj</span>
+                  <span class="nx-badge nx-channel-analysis-rule__stat">Timeout: {{ rule.timeout_label }}</span>
+                </div>
+              </div>
+              <div class="nx-filter-rule__actions">
+                <button
+                  hx-delete="/channel-analysis/{{ rule.id }}"
+                  hx-target="#channel-analysis-rules"
+                  hx-swap="outerHTML"
+                  hx-confirm="{{ rule.channel_name }} kanalındaki {{ rule.max_messages_per_hour }} mesaj/saat eşik kuralı kaldırılacak."
+                  data-confirm-title="Kanal analizi kuralını sil"
+                  data-confirm-accept="Sil"
+                  data-confirm-tone="danger"
+                  class="nx-filter-rule__delete"
+                  type="button"
+                  aria-label="Kuralı sil"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="nx-empty nx-filters-empty">
+            <i class="fas fa-chart-line"></i>
+            Henüz aktif bir kanal analizi kuralı yok. Yukarıdaki formdan ilk kuralı ekleyebilirsiniz.
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="nx-section nx-channel-analysis-section" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon"><i class="fas fa-gavel"></i></div>
+        <div>
+          <h2 class="nx-section__title">Son Kanal İşlemleri</h2>
+          <p class="nx-section__subtitle">Uygulanan timeoutlar ve Discord tarafından engellenen denemeler</p>
+        </div>
+      </div>
+
+      <div class="nx-channel-analysis-events">
+        {% for item in channel_analysis.recent_actions %}
+          <article class="nx-channel-analysis-event" data-nx="tile">
+            <div class="nx-channel-analysis-event__head">
+              <div class="nx-channel-analysis-event__target">
+                {% if item.target_avatar_url %}
+                  <img src="{{ item.target_avatar_url }}" alt="{{ item.target_name }}">
+                {% else %}
+                  <span>{{ item.target_name[:1] }}</span>
+                {% endif %}
+                <div>
+                  <strong>{{ item.target_name }}</strong>
+                  <span>{{ item.created_at_label }} · {{ item.created_at_relative }}</span>
+                </div>
+              </div>
+              <span class="nx-badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
+            </div>
+            <p class="nx-channel-analysis-event__reason">{{ item.reason_label }}</p>
+          </article>
+        {% else %}
+          <div class="nx-empty">
+            Kanal analizi kaynaklı bir timeout veya engellenmiş deneme kaydı henüz oluşmadı.
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

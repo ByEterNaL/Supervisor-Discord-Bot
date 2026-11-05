@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Guard Log Merkezi{% endblock %}
+{% block heading %}Guard Log Merkezi{% endblock %}
+{% block subheading %}Guard, rol, moderasyon ve yedek kayıtlarını kalıcı olarak inceleyin{% endblock %}
+
+{% block content %}
+<div class="nx-hero nx-guard-log-hero nx-mb-md" data-nx="tile">
+  <div class="nx-hero__eyebrow">GUARD LOG CENTER</div>
+  <h1 class="nx-hero__title">Silinse bile kalan olay akışı</h1>
+  <p class="nx-hero__desc">
+    Kanal, kategori, webhook, bot, rol, moderasyon ve yedek olayları veritabanında saklanır;
+    Discord üstünden silinse bile buradan incelenebilir.
+  </p>
+  <div class="nx-hero__stats">
+    {% for card in logs.summary_cards %}
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ card.value }}</span>
+      <span class="nx-hero__stat-label">{{ card.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="nx-toolbar nx-mb-md" data-nx="tile">
+  <form method="get" class="nx-toolbar__form">
+    <label class="nx-toolbar__field">
+      <span>Kaynak</span>
+      <select name="source" class="nx-toolbar__select">
+        {% for option in logs.filters.source_options %}
+        <option value="{{ option.value }}" {% if logs.filters.source == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Seviye</span>
+      <select name="severity" class="nx-toolbar__select">
+        {% for option in logs.filters.severity_options %}
+        <option value="{{ option.value }}" {% if logs.filters.severity == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Modül</span>
+      <select name="feature" class="nx-toolbar__select">
+        {% for option in logs.filters.feature_options %}
+        <option value="{{ option.value }}" {% if logs.filters.feature == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Aktör</span>
+      <select name="actor_id" class="nx-toolbar__select">
+        <option value="">Tümü</option>
+        {% for option in logs.filters.actor_options %}
+        <option value="{{ option.value }}" {% if logs.filters.actor_id == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field nx-toolbar__field--grow">
+      <span>Arama</span>
+      <input type="text" name="q" value="{{ logs.filters.query }}" class="nx-toolbar__select" placeholder="Rol, kanal, aktör, sebep veya kimlik ara">
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Kayıt</span>
+      <select name="limit" class="nx-toolbar__select">
+        {% for option in logs.filters.limit_options %}
+        <option value="{{ option.value }}" {% if logs.filters.limit == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="nx-toolbar__button">Uygula</button>
+    <a href="/guard-logs" class="nx-toolbar__button nx-toolbar__button--ghost">Temizle</a>
+  </form>
+</div>
+
+<section class="nx-section nx-guard-log-section" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">&#128221;</div>
+    <div>
+      <h2 class="nx-section__title">Kalıcı Olay Akışı</h2>
+      <p class="nx-section__subtitle">Snapshot, diff ve müdahale sonucuyla birlikte saklanan en güncel olaylar</p>
+    </div>
+  </div>
+
+  <div class="nx-guard-log-stream">
+    {% for item in logs.events %}
+    <details class="nx-guard-log-card" data-nx="tile" {% if item.open_by_default %}open{% endif %}>
+      <summary class="nx-guard-log-card__summary">
+        <div class="nx-guard-log-card__identity">
+          <span class="nx-guard-log-card__icon"><i class="{{ item.source_icon }}"></i></span>
+          <div>
+            <div class="nx-guard-log-card__title-row">
+              <strong>{{ item.title }}</strong>
+              <span class="nx-badge {{ item.severity_badge_class }}">{{ item.severity_label }}</span>
+              <span class="nx-badge {{ item.source_badge_class }}">{{ item.source_label }}</span>
+            </div>
+            <p>{{ item.summary }}</p>
+          </div>
+        </div>
+        <div class="nx-guard-log-card__time">
+          <strong>{{ item.created_at_label }}</strong>
+          <span>{{ item.created_at_relative }}</span>
+        </div>
+      </summary>
+
+      <div class="nx-guard-log-card__body">
+        <div class="nx-guard-log-card__chips">
+          <span class="nx-badge">{{ item.feature_label }}</span>
+          <span class="nx-badge">{{ item.action_label }}</span>
+        </div>
+
+        <div class="nx-guard-log-card__facts">
+          {% for detail in item.details %}
+          <div class="nx-guard-log-card__fact">
+            <span>{{ detail.label }}</span>
+            <strong>{{ detail.value }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if item.changes %}
+        <section class="nx-guard-log-card__block">
+          <div class="nx-guard-log-card__block-head">
+            <strong>Algılanan Değişiklikler</strong>
+            <span>{{ item.changes | length }} kayıt</span>
+          </div>
+          <div class="nx-guard-log-change-list">
+            {% for change in item.changes %}
+            <div class="nx-guard-log-change">
+              <span class="nx-guard-log-change__label">{{ change.label }}</span>
+              <div class="nx-guard-log-change__values">
+                <div>
+                  <small>Eski</small>
+                  <strong>{{ change.old_value }}</strong>
+                </div>
+                <div>
+                  <small>Yeni</small>
+                  <strong>{{ change.new_value }}</strong>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if item.audit_changes %}
+        <section class="nx-guard-log-card__block">
+          <div class="nx-guard-log-card__block-head">
+            <strong>Audit Log İzleri</strong>
+            <span>{{ item.audit_changes | length }} alan</span>
+          </div>
+          <div class="nx-guard-log-change-list">
+            {% for change in item.audit_changes %}
+            <div class="nx-guard-log-change">
+              <span class="nx-guard-log-change__label">{{ change.label }}</span>
+              <div class="nx-guard-log-change__values">
+                <div>
+                  <small>Eski</small>
+                  <strong>{{ change.old_value }}</strong>
+                </div>
+                <div>
+                  <small>Yeni</small>
+                  <strong>{{ change.new_value }}</strong>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if item.snapshot_sections %}
+        <section class="nx-guard-log-card__block">
+          <div class="nx-guard-log-card__block-head">
+            <strong>Snapshot Detayları</strong>
+            <span>{{ item.snapshot_sections | length }} blok</span>
+          </div>
+          <div class="nx-guard-log-snapshot-grid">
+            {% for section in item.snapshot_sections %}
+            <article class="nx-guard-log-snapshot">
+              <strong>{{ section.title }}</strong>
+              <div class="nx-guard-log-snapshot__rows">
+                {% for row in section.rows %}
+                <div class="nx-guard-log-snapshot__row">
+                  <span>{{ row.label }}</span>
+                  <strong>{{ row.value }}</strong>
+                </div>
+                {% endfor %}
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+      </div>
+    </details>
+    {% else %}
+    <div class="nx-empty">Bu filtrelerde gösterilecek guard kaydı bulunmuyor.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

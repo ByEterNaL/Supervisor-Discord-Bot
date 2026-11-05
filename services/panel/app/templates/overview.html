@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Genel Bakis{% endblock %}
+{% block heading %}Genel Bakis{% endblock %}
+{% block subheading %}Anlik operasyon ozetleri ve aktif alarmlar{% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="nx-hero" data-nx="tile">
+  <div class="nx-hero__eyebrow">◆ KONTROL MERKEZİ</div>
+  <h1 class="nx-hero__title">Anlık sunucu durumunu tek bakışta gör</h1>
+  <p class="nx-hero__desc">Aktif yetkililer, destek talepleri, moderasyon işlemleri ve ses aktiflikleri tek ekranda.</p>
+  <div class="nx-hero__stats">
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.active_staff_count }}">0</span>
+      <span class="nx-hero__stat-label">Aktif Yetkili</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.open_ticket_count }}">0</span>
+      <span class="nx-hero__stat-label">Acik Ticket</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.claimed_ticket_count }}">0</span>
+      <span class="nx-hero__stat-label">Üstlenilen Ticket</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.moderation_actions }}">0</span>
+      <span class="nx-hero__stat-label">Yetki Kullanimi</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.staff_voice_seconds | hours_value }}">0</span>
+      <span class="nx-hero__stat-label">Aktif Ses (saat)</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value count-up" data-value="{{ overview.alert_count }}">0</span>
+      <span class="nx-hero__stat-label">Alarm</span>
+    </div>
+  </div>
+</div>
+
+<div class="nx-dots"></div>
+
+<!-- Main Content: Media + Alerts -->
+<div class="nx-grid-2">
+  <!-- Media Distribution -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">📡</div>
+      <div>
+        <h2 class="nx-section__title">Medya Dağılımı</h2>
+        <p class="nx-section__subtitle">Yetkililerin seste ve yayında geçirdiği toplam süreler</p>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 28px; align-items: center;">
+      <div class="nx-donut">
+        <div class="nx-donut__ring" style="--donut-gradient: conic-gradient({{ media.gradient }});">
+          <div class="nx-donut__inner">
+            <span class="nx-donut__value">{{ media.total_hours }}</span>
+            <span class="nx-donut__label">saat toplam</span>
+          </div>
+        </div>
+      </div>
+      <div class="nx-bar-strip" style="flex: 1;">
+        {% for item in media["items"] %}
+        <div class="nx-bar" data-nx="tile">
+          <div class="nx-bar__header">
+            <span class="nx-bar__label">{{ item.label }}</span>
+            <span class="nx-bar__pct" style="color: {{ item.color }};">{{ item.percentage }}%</span>
+          </div>
+          <div class="nx-bar__track">
+            <div class="nx-bar__fill" data-nx-bar="{{ item.percentage }}" style="background: {{ item.color }};"></div>
+          </div>
+          <span class="nx-bar__sub">{{ item.hours }} saat</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if not media.has_data %}
+    <div class="nx-empty" style="margin-top: 16px;">Dagilim gostermek icin henuz medya verisi yok.</div>
+    {% endif %}
+  </div>
+
+  <!-- Alerts -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">🔔</div>
+      <div>
+        <h2 class="nx-section__title">Kritik Alarmlar</h2>
+        <p class="nx-section__subtitle">Açık kalan en son uyarılar</p>
+      </div>
+    </div>
+
+    <div class="nx-alert-list">
+      {% for alert in alerts %}
+      <div class="nx-alert nx-alert--{{ alert.severity }}" data-nx="tile">
+        <div class="nx-alert__header">
+          <div class="nx-alert__signal" aria-hidden="true"></div>
+          <div class="nx-alert__header-copy">
+            <div class="nx-alert__top">
+              <strong class="nx-alert__type">{{ alert.title }}</strong>
+              <span class="nx-badge {{ alert.severity_badge_class }}">{{ alert.severity_label }}</span>
+            </div>
+            <div class="nx-alert__subline">
+              <span>{{ alert.severity_note }}</span>
+              <span>{{ alert.created_relative }}</span>
+            </div>
+          </div>
+        </div>
+        <p class="nx-alert__msg">{{ alert.summary }}</p>
+        <div class="nx-alert__action">
+          <span class="nx-alert__action-label">Öneri</span>
+          <p class="nx-alert__action-text">{{ alert.action_text }}</p>
+        </div>
+        {% if alert.details %}
+        <div class="nx-alert__details">
+          {% for item in alert.details %}
+          <div class="nx-alert__detail-card">
+            <span class="nx-alert__detail-label">{{ item.label }}</span>
+            <strong class="nx-alert__detail-value">{{ item.value }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="nx-empty">Açık alarm yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

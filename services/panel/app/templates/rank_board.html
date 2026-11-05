@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{{ board.title }}{% endblock %}
+{% block heading %}{{ board.title }}{% endblock %}
+{% block subheading %}{{ board.description }}{% endblock %}
+
+{% block content %}
+<div class="nx-hero" data-nx="tile">
+  <div class="nx-hero__eyebrow">Seviye Liderlik Tahtası</div>
+  <h1 class="nx-hero__title">{{ board.title }}</h1>
+  <p class="nx-hero__desc">{{ board.description }}</p>
+  <div class="nx-hero__stats">
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ board.summary.member_count }}</span>
+      <span class="nx-hero__stat-label">Sıralanan kişi</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ board.summary.top_xp }}</span>
+      <span class="nx-hero__stat-label">En yüksek toplam XP</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ board.summary.top_level }}</span>
+      <span class="nx-hero__stat-label">En yüksek seviye</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ board.summary.track_label }}</span>
+      <span class="nx-hero__stat-label">Aktif kulvar</span>
+    </div>
+  </div>
+</div>
+
+<div class="rank-switch-row">
+  <a href="{{ active_path }}?track=voice{% if scope %}&scope={{ scope }}{% endif %}" class="nx-badge {% if board.xp_type == 'voice' %}nx-badge--orange{% endif %}">Ses</a>
+  <a href="{{ active_path }}?track=text{% if scope %}&scope={{ scope }}{% endif %}" class="nx-badge {% if board.xp_type == 'text' %}nx-badge--teal{% endif %}">Metin</a>
+  {% if active_path == '/member-ranks' %}
+  <a href="{{ active_path }}?track={{ track }}&scope=user" class="nx-badge {% if scope == 'user' %}nx-badge--teal{% endif %}">Sadece Kullanıcılar</a>
+  <a href="{{ active_path }}?track={{ track }}&scope=staff" class="nx-badge {% if scope == 'staff' %}nx-badge--orange{% endif %}">Sadece Yetkililer</a>
+  <a href="{{ active_path }}?track={{ track }}&scope=all" class="nx-badge {% if scope == 'all' %}nx-badge--red{% endif %}">Tümü</a>
+  {% endif %}
+</div>
+
+<section class="nx-section" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">🏅</div>
+    <h2 class="nx-section__title">{{ board.title }}</h2>
+  </div>
+
+  <div class="nx-roster">
+    {% for item in board.rows %}
+    <a href="/{{ 'staff' if item.member_type == 'staff' else 'members' }}/{{ item.user_id }}" class="rank-row-card" data-nx="tile">
+      <div class="nx-roster-row__rank {% if item.rank <= 3 %}nx-roster-row__rank--{{ item.rank }}{% endif %}">{{ item.rank }}</div>
+      <div class="nx-roster-row__avatar">
+        {% if item.avatar_url %}
+        <img src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+        {% else %}
+        {{ item.initials }}
+        {% endif %}
+      </div>
+      <div class="rank-row-card__body">
+        <div class="rank-row-card__header">
+          <div>
+            <div class="nx-roster-row__name">{{ item.display_name }}</div>
+            <div class="nx-roster-row__meta">
+              Seviye {{ item.selected_level }} • {{ item.selected_xp }} XP
+            </div>
+          </div>
+          <div class="rank-row-card__stats">
+            <span class="nx-badge nx-badge--orange">%{{ item.progress_percent }}</span>
+            {% for badge in item.reward_badges %}
+            <span class="nx-badge nx-badge--teal">{{ badge }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="rank-progress">
+          <div class="rank-progress__fill" style="width: {{ item.progress_percent }}%;"></div>
+        </div>
+        <div class="rank-row-card__footer">
+          <span>Bu seviye: {{ item.current_level_xp }} XP</span>
+          <span>Sonraki seviye: {{ item.next_level_xp }} XP</span>
+          <span>Diğer kulvar: Ses {{ item.voice_level }} • Metin {{ item.text_level }}</span>
+        </div>
+      </div>
+    </a>
+    {% else %}
+    <div class="nx-empty">Henüz listelenecek rütbe verisi yok.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

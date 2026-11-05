@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Sistem Sağlığı{% endblock %}
+{% block heading %}Sistem Sağlığı{% endblock %}
+{% block subheading %}Bot, worker, queue ve veri akışlarının anlık durumunu izleyin{% endblock %}
+
+{% block content %}
+<div class="nx-hero nx-health-hero" data-nx="tile">
+  <div class="nx-hero__eyebrow">SYSTEM WATCH</div>
+  <h1 class="nx-hero__title">Operasyon katmanları tek ekranda</h1>
+  <p class="nx-hero__desc">Bot, worker, veritabanı, Redis ve senkron akışlarını aynı yerden takip edin.</p>
+  <div class="nx-hero__stats">
+    {% for card in health.summary_cards %}
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ card.value }}</span>
+      <span class="nx-hero__stat-label">{{ card.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="nx-health-score-grid nx-mb-md">
+  {% for item in health.score_cards %}
+  <div class="nx-health-score" data-nx="tile">
+    <span class="nx-health-score__label">{{ item.label }}</span>
+    <div class="nx-health-score__value" style="color: {{ item.tone }};">{{ item.value }}</div>
+    <strong class="nx-health-score__status" style="color: {{ item.tone }};">{{ item.status_label }}</strong>
+    <p class="nx-health-score__note">{{ item.note }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="nx-section nx-health-notes nx-mb-md" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">&#128161;</div>
+    <div>
+      <h2 class="nx-section__title">Veri Güven Notları</h2>
+      <p class="nx-section__subtitle">Skoru etkileyen kısa durum özeti</p>
+    </div>
+  </div>
+  <div class="nx-note-list">
+    {% for note in health.score_notes %}
+    <div class="nx-note-list__item">{{ note }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="nx-grid-3 nx-mb-md">
+  {% for item in health.insights %}
+  <div class="nx-tile nx-tile--accent nx-health-insight" data-nx="tile">
+    <span class="nx-stat-block__label">{{ item.label }}</span>
+    <div class="nx-stat-block__value">{{ item.value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="nx-section nx-health-section" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">&#9881;</div>
+    <div>
+      <h2 class="nx-section__title">Servis Durumlari</h2>
+      <p class="nx-section__subtitle">Heartbeat ve baglanti kontrolleri</p>
+    </div>
+  </div>
+
+  <div class="nx-health-grid">
+    {% for item in health.services %}
+    <article class="nx-health-card" data-nx="tile">
+      <div class="nx-health-card__head">
+      <div>
+          <span class="nx-health-card__label">{{ item.label }}</span>
+          <strong class="nx-health-card__status" style="color: {{ item.tone }};">{{ item.status_label }}</strong>
+        </div>
+        <span class="nx-health-card__dot" style="background: {{ item.tone }};"></span>
+      </div>
+      <p class="nx-health-card__note">{{ item.note }}</p>
+      <p class="nx-health-card__detail">{{ item.detail }}</p>
+      <div class="nx-health-card__meta">
+        <span>Son görülme: {{ item.last_seen_label }}</span>
+        <span>Yaş: {{ item.age_label }}</span>
+        <span>Başlangıç: {{ item.started_at_label }}</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

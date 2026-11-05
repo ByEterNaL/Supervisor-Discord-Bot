@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Kanıtsız İşlemler{% endblock %}
+{% block heading %}Kanıtsız İşlemler{% endblock %}
+{% block subheading %}Kanıt belirtilmeyen cezai işlemler listesi{% endblock %}
+
+{% block content %}
+  <div class="nx-section__header" style="display: flex; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="nx-section__icon">⚠️</div>
+      <h2 class="nx-section__title">İncelenmesi Gereken İşlemler</h2>
+    </div>
+    <button
+      hx-delete="/unproven"
+      hx-target=".nx-roster"
+      hx-swap="innerHTML"
+      hx-confirm="Tüm kanıtsız işlemler kalıcı olarak silinecek ve liste sıfırlanacak."
+      data-confirm-title="Kanıtsız işlemleri temizle"
+      data-confirm-accept="Tümünü Sil"
+      data-confirm-tone="danger"
+      style="margin-left: auto; padding: 8px 16px; background-color: rgba(255, 93, 108, 0.1); color: var(--nx-red); border: 1px solid rgba(255, 93, 108, 0.3); border-radius: 6px; cursor: pointer; font-family: var(--nx-mono); font-size: 0.85rem; font-weight: bold; transition: all 0.2s;">
+      Tümünü Temizle
+    </button>
+  </div>
+
+  <div class="nx-roster">
+    {% for action in actions %}
+    <div class="nx-roster-row" data-nx="tile">
+      <div class="nx-roster-row__avatar">
+        {% if action.actor_avatar %}
+        <img src="{{ action.actor_avatar }}" alt="{{ action.actor_name }}">
+        {% else %}
+        {{ action.actor_name[:2] | upper }}
+        {% endif %}
+      </div>
+      <div class="nx-roster-row__info">
+        <div class="nx-roster-row__name" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom;" title="{{ action.actor_name }}">{{ action.actor_name }}</div>
+        <div class="nx-roster-row__meta">Yetkili<br>{{ action.actor_id }}</div>
+      </div>
+      
+      <div class="nx-roster-row__meta" style="flex: 0 0 auto; margin: 0 20px;">
+        <span class="nx-badge {% if action.action_type == 'ban' %}nx-badge--red{% elif action.action_type == 'kick' %}nx-badge--orange{% else %}nx-badge--teal{% endif %}">
+          {{ action.action_type | upper }}
+        </span>
+      </div>
+
+      <div class="nx-roster-row__avatar">
+        {% if action.target_avatar %}
+        <img src="{{ action.target_avatar }}" alt="{{ action.target_name }}">
+        {% else %}
+        {{ action.target_name[:2] | upper if action.target_name else '?' }}
+        {% endif %}
+      </div>
+      <div class="nx-roster-row__info">
+        <div class="nx-roster-row__name" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom;" title="{{ action.target_name or 'Bilinmiyor' }}">{{ action.target_name or 'Bilinmiyor' }}</div>
+        <div class="nx-roster-row__meta">Kullanıcı (Hedef)<br>{{ action.target_id }}</div>
+      </div>
+
+      <div class="nx-roster-row__metrics">
+        <div class="nx-roster-row__meta">
+          {{ action.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+        </div>
+      </div>
+
+    </div>
+    {% else %}
+    <div class="nx-empty">Şu anda sistemde kanıtsız olarak işaretlenmiş bir işlem bulunmuyor.</div>
+    {% endfor %}
+  </div>
+
+{% endblock %}

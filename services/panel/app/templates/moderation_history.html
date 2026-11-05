@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Moderasyon Geçmişi{% endblock %}
+{% block heading %}Moderasyon Geçmişi{% endblock %}
+{% block subheading %}Vaka ve işlem kayıtlarını filtreleyip inceleyin{% endblock %}
+
+{% block content %}
+<div class="nx-hero nx-mb-md" data-nx="tile">
+  <div class="nx-hero__eyebrow">◈ MODERATION LEDGER</div>
+  <h1 class="nx-hero__title">Vakalar ve işlem akışı</h1>
+  <p class="nx-hero__desc">Kalıcı moderasyon vakalarını solda bir kart listesi olarak, gerçekleşen işlem akışını sağda neon zaman çizelgesi olarak inceleyin.</p>
+  <div class="nx-hero__stats">
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ moderation.rows | length }}</span>
+      <span class="nx-hero__stat-label">Vaka</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ moderation.actions | length }}</span>
+      <span class="nx-hero__stat-label">İşlem</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ moderation.filters.limit }}</span>
+      <span class="nx-hero__stat-label">Limit</span>
+    </div>
+  </div>
+</div>
+
+<section class="panel nx-mod-filter-panel" data-nx="tile">
+  <div class="panel-head nx-mod-filter-panel__head">
+    <div>
+      <h3><i class="fas fa-filter"></i> Filtreler</h3>
+      <p>Komut türü, durum, aktör, hedef ve tarihe göre filtreleyin</p>
+    </div>
+  </div>
+  <form method="get" action="/moderation-history" class="form-grid nx-moderation-filter-grid">
+    <label>
+      Komut Türü
+      <select name="case_type">
+        <option value="all" {% if moderation.filters.case_type == 'all' %}selected{% endif %}>Tümü</option>
+        {% for value, label in [('ban', 'Ban'), ('unban', 'Ban Kaldır'), ('kick', 'Kick'), ('timeout', 'Timeout'), ('untimeout', 'Timeout Kaldır'), ('softban', 'Softban'), ('warn', 'Warn'), ('unwarn', 'Warn Kaldır'), ('jail', 'Jail'), ('unjail', 'Jail Kaldır'), ('purge', 'Purge'), ('lock', 'Lock'), ('unlock', 'Unlock'), ('slowmode', 'Slowmode')] %}
+        <option value="{{ value }}" {% if moderation.filters.case_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Durum
+      <select name="status">
+        <option value="all" {% if moderation.filters.status == 'all' %}selected{% endif %}>Tümü</option>
+        {% for value, label in [('pending', 'Beklemede'), ('active', 'Aktif'), ('completed', 'Tamamlandı'), ('removed', 'Kaldırıldı'), ('cancelled', 'İptal Edildi'), ('failed', 'Başarısız'), ('expired', 'Süresi Doldu')] %}
+        <option value="{{ value }}" {% if moderation.filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Aktör
+      <select name="actor_id">
+        <option value="">Tümü</option>
+        {% for member in moderation.member_options %}
+        <option value="{{ member.user_id }}" {% if moderation.filters.actor_id == member.user_id|string %}selected{% endif %}>{{ member.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Hedef
+      <select name="target_id">
+        <option value="">Tümü</option>
+        {% for member in moderation.member_options %}
+        <option value="{{ member.user_id }}" {% if moderation.filters.target_id == member.user_id|string %}selected{% endif %}>{{ member.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Başlangıç Tarihi
+      <input type="date" name="date_from" value="{{ moderation.filters.date_from }}">
+    </label>
+    <label>
+      Bitiş Tarihi
+      <input type="date" name="date_to" value="{{ moderation.filters.date_to }}">
+    </label>
+    <label>
+      Limit
+      <input type="number" min="10" max="120" name="limit" value="{{ moderation.filters.limit }}">
+    </label>
+    <div class="actions-row actions-row--center">
+      <button type="submit" class="primary-button action-button">
+        <i class="fas fa-filter"></i>
+        <span>Filtrele</span>
+      </button>
+    </div>
+  </form>
+</section>
+
+<div class="nx-grid-2 nx-mod-history-grid">
+  <!-- LEFT: Case Cards -->
+  <section class="nx-mod-cases" data-nx="tile">
+    <div class="nx-mod-cases__head">
+      <div class="nx-mod-cases__heading">
+        <div class="nx-mod-cases__icon"><i class="fas fa-folder-open"></i></div>
+        <div>
+          <h2 class="nx-mod-cases__title">Vaka Arşivi</h2>
+          <p class="nx-mod-cases__subtitle">Kalıcı moderasyon kayıtları — en yeni üstte</p>
+        </div>
+      </div>
+      <span class="nx-mod-cases__counter">{{ moderation.rows | length }} kayıt</span>
+    </div>
+
+    <div class="nx-mod-case-grid">
+      {% for row in moderation.rows %}
+      <article class="nx-mod-case" data-nx="tile" data-case-type="{{ row.case_type or row.action_label | default('other') | lower }}">
+        <header class="nx-mod-case__header">
+          <div class="nx-mod-case__id">
+            <span class="nx-mod-case__id-num">#{{ row.id }}</span>
+            <span class="nx-mod-case__kind">{{ row.case_label }}</span>
+          </div>
+          <div class="nx-mod-case__badges">
+            <span class="nx-badge nx-mod-status nx-mod-status--{{ row.status or 'pending' }}">{{ row.status_label }}</span>
+            {% if row.duration_label %}
+            <span class="nx-badge nx-badge--teal">{{ row.duration_label }}</span>
+            {% endif %}
+            {% if row.points %}
+            <span class="nx-badge nx-badge--orange">{{ row.points }} puan</span>
+            {% endif %}
+          </div>
+        </header>
+
+        <div class="nx-mod-case__target">
+          <div class="nx-mod-case__target-avatar">
+            <i class="fas {{ 'fa-hashtag' if row.target_type == 'channel' else 'fa-user' }}"></i>
+          </div>
+          <div class="nx-mod-case__target-meta">
+            <strong>{{ row.target_name }}</strong>
+            <span>{{ row.created_at_label }} · {{ row.created_at_relative }}</span>
+          </div>
+        </div>
+
+        <p class="nx-mod-case__reason">{{ row.reason or 'Sebep belirtilmedi.' }}</p>
+
+        <footer class="nx-mod-case__footer">
+          <span class="nx-mod-case__fact">
+            <i class="fas fa-user-shield"></i>
+            <span>Aktör</span>
+            <strong>{{ row.actor_name }}</strong>
+          </span>
+          <span class="nx-mod-case__fact nx-mod-case__fact--dm nx-mod-case__fact--dm-{{ (row.dm_status or 'unsent') }}">
+            <i class="fas fa-envelope"></i>
+            <span>DM</span>
+            <strong>{{ row.dm_status_label }}</strong>
+          </span>
+          {% if row.resolved_at_label and row.resolved_at_label != '-' %}
+          <span class="nx-mod-case__fact">
+            <i class="fas fa-circle-check"></i>
+            <span>Çözüm</span>
+            <strong>{{ row.resolved_at_label }}</strong>
+          </span>
+          {% endif %}
+          {% if row.proof_url %}
+          <a class="nx-mod-case__proof" href="{{ row.proof_url }}" target="_blank" rel="noreferrer">
+            <i class="fas fa-link"></i> Kanıt
+          </a>
+          {% endif %}
+        </footer>
+      </article>
+      {% else %}
+      <div class="nx-empty nx-mod-empty">
+        <i class="fas fa-inbox"></i>
+        Henüz listelenecek moderasyon vakası yok.
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- RIGHT: Action Timeline -->
+  <section class="nx-mod-timeline-panel" data-nx="tile">
+    <div class="nx-mod-timeline-panel__head">
+      <div class="nx-mod-timeline-panel__heading">
+        <div class="nx-mod-timeline-panel__icon"><i class="fas fa-stream"></i></div>
+        <div>
+          <h2 class="nx-mod-timeline-panel__title">İşlem Akışı</h2>
+          <p class="nx-mod-timeline-panel__subtitle">Gerçekleşen moderasyon aksiyonları — kronolojik</p>
+        </div>
+      </div>
+      <span class="nx-mod-timeline-panel__counter">{{ moderation.actions | length }} işlem</span>
+    </div>
+
+    <ol class="nx-mod-timeline">
+      {% for row in moderation.actions %}
+      <li class="nx-mod-timeline__item nx-mod-timeline__item--{{ row.source or 'bot' }}">
+        <span class="nx-mod-timeline__node">
+          <i class="fas {% if row.source == 'audit-log' %}fa-user-secret{% elif row.source == 'worker' %}fa-gears{% else %}fa-robot{% endif %}"></i>
+        </span>
+        <div class="nx-mod-timeline__card" data-nx="tile">
+          <header class="nx-mod-timeline__header">
+            <div class="nx-mod-timeline__title-row">
+              {% if row.case_id %}
+              <span class="nx-mod-timeline__case">#{{ row.case_id }}</span>
+              {% endif %}
+              <strong class="nx-mod-timeline__action">{{ row.action_label }}</strong>
+              <span class="nx-badge nx-mod-source nx-mod-source--{{ row.source or 'bot' }}">{{ row.source_label }}</span>
+            </div>
+            <span class="nx-mod-timeline__time" title="{{ row.created_at_label }}">{{ row.created_at_relative }}</span>
+          </header>
+
+          <div class="nx-mod-timeline__rel">
+            <span class="nx-mod-timeline__rel-node">
+              <i class="fas fa-user-shield"></i>
+              <span>{{ row.actor_name }}</span>
+            </span>
+            <i class="fas fa-arrow-right nx-mod-timeline__rel-arrow"></i>
+            <span class="nx-mod-timeline__rel-node">
+              <i class="fas {{ 'fa-hashtag' if row.target_type == 'channel' else 'fa-user' }}"></i>
+              <span>{{ row.target_name }}</span>
+            </span>
+          </div>
+
+          {% if row.reason %}
+          <p class="nx-mod-timeline__reason">{{ row.reason }}</p>
+          {% endif %}
+
+          <footer class="nx-mod-timeline__footer">
+            <span class="nx-mod-timeline__meta">{{ row.created_at_label }}</span>
+          </footer>
+        </div>
+      </li>
+      {% else %}
+      <li class="nx-empty nx-mod-empty">
+        <i class="fas fa-wave-square"></i>
+        Henüz listelenecek moderasyon işlemi yok.
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}

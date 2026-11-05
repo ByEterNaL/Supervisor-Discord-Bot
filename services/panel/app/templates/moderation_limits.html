@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Ceza Limitleri{% endblock %}
+{% block heading %}Ceza Limitleri{% endblock %}
+{% block subheading %}Belirli rollere veya kullanıcılara günlük komut sınırı (bağışıklık vs. olmadan doğrudan engelleme) tanımlayın.{% endblock %}
+
+{% block content %}
+<div class="nx-grid-1 nx-channel-analysis-page">
+  <section class="panel nx-filters-panel nx-channel-analysis-panel" data-nx="tile">
+    <div class="panel-head nx-filters-panel__head">
+      <h3><i class="fas fa-shield-halved"></i> Yeni Limit Tanımla</h3>
+    </div>
+    <form method="post" action="/moderation-limits" class="settings-form nx-filters-form">
+      <div class="form-grid nx-channel-analysis-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        
+        <label>
+          Limit Tipi
+          <select name="target_type" class="nx-filters-input" id="limitTargetType" required onchange="toggleLimitFields()">
+            <option value="role" selected>Rol Başına</option>
+            <option value="user">Kullanıcı Başına</option>
+          </select>
+        </label>
+        
+        <label id="target_role_label">
+          Limit Uygulanacak Rol
+          <select name="target_id_role" class="nx-filters-input" id="limitTargetRole">
+            <option value="" disabled selected>Rol seçin...</option>
+            {% for opt in role_options %}
+              <option value="{{ opt.item_id }}" style="color: {{ opt.item_color }}">{{ opt.item_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label id="target_user_label" style="display: none;">
+          Limit Uygulanacak Kullanıcı
+          <select name="target_id_user" class="nx-filters-input" id="limitTargetUser">
+            <option value="" disabled selected>Kullanıcı seçin...</option>
+            {% for opt in member_options %}
+              <option value="{{ opt.item_id }}">{{ opt.item_name }} - {{ opt.item_subtitle }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        
+        <label>
+          İşlem Tipi
+          <select name="action_type" required class="nx-filters-input">
+            <option value="" disabled selected>Komut seçin...</option>
+            <option value="ban">Ban (Yasaklama)</option>
+            <option value="kick">Kick (Atma)</option>
+            <option value="timeout">Timeout / Mute (Susturma)</option>
+            <option value="warn">Warn (Uyarı)</option>
+            <option value="jail">Jail (Hapis)</option>
+            <option value="unban">Unban</option>
+          </select>
+        </label>
+
+        <label>
+          Günlük Sınır (Adet)
+          <input
+            type="number"
+            name="max_daily"
+            min="1"
+            step="1"
+            value="3"
+            required
+            class="nx-filters-input"
+            placeholder="Örn. 3"
+          >
+        </label>
+        
+        <!-- Gizli asıl target_id post alanı -->
+        <input type="hidden" name="target_id" id="actualTargetId" value="">
+      </div>
+      <div class="actions-row actions-row--center nx-filters-actions">
+        <button type="submit" class="primary-button action-button nx-filters-submit" onclick="syncTargetId()">
+          <i class="fas fa-plus"></i> Kaydet
+        </button>
+      </div>
+    </form>
+    
+    <script>
+      function toggleLimitFields() {
+        const type = document.getElementById('limitTargetType').value;
+        if (type === 'role') {
+          document.getElementById('target_role_label').style.display = 'block';
+          document.getElementById('target_user_label').style.display = 'none';
+        } else {
+          document.getElementById('target_role_label').style.display = 'none';
+          document.getElementById('target_user_label').style.display = 'block';
+        }
+      }
+      function syncTargetId() {
+        const type = document.getElementById('limitTargetType').value;
+        if (type === 'role') {
+          document.getElementById('actualTargetId').value = document.getElementById('limitTargetRole').value;
+        } else {
+          document.getElementById('actualTargetId').value = document.getElementById('limitTargetUser').value;
+        }
+      }
+    </script>
+  </section>
+
+  <div class="nx-grid-2 nx-channel-analysis-grid">
+    <section class="nx-section nx-channel-analysis-section" id="moderation-limits-rules" data-nx="tile" style="grid-column: 1 / -1;">
+      <div class="nx-section__header">
+        <div class="nx-section__icon"><i class="fas fa-scale-balanced"></i></div>
+        <div>
+          <h2 class="nx-section__title">Aktif Limitler</h2>
+          <p class="nx-section__subtitle">Aynı komut için kullanıcı/rol'e tekrar limit atarsanız eski limit değeri güncellenir.</p>
+        </div>
+      </div>
+
+      <div class="nx-roster nx-channel-analysis-rules" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+        {% if rules %}
+          {% for rule in rules %}
+            <div class="nx-filter-rule nx-channel-analysis-rule" data-nx="tile" style="min-width: unset; margin: 0;">
+              <div class="nx-filter-rule__content">
+                <div class="nx-filter-rule__header">
+                  <span class="nx-badge nx-filter-rule__channel">
+                    <i class="fas {{ rule.target_icon }}"></i> {{ rule.target_name }}
+                  </span>
+                  <span class="nx-filter-rule__channel-id" style="text-transform: capitalize;">{{ rule.type_label }}</span>
+                </div>
+                <div class="nx-channel-analysis-rule__stats" style="margin-top: 12px;">
+                  <span class="nx-badge nx-channel-analysis-rule__stat" style="text-transform: uppercase;">Komut: {{ rule.action_type }}</span>
+                  <span class="nx-badge nx-channel-analysis-rule__stat">Max <b>{{ rule.max_daily }}</b> Kullanım / Gün </span>
+                </div>
+              </div>
+              <div class="nx-filter-rule__actions">
+                <button
+                  hx-delete="/moderation-limits/{{ rule.target_type }}/{{ rule.target_id }}/{{ rule.action_type }}"
+                  hx-target="#moderation-limits-rules"
+                  hx-swap="outerHTML"
+                  hx-confirm="{{ rule.target_name }} için {{ rule.action_type }} günlük limiti ({{ rule.max_daily }}) kaldırılacak."
+                  data-confirm-title="Ceza limitini sil"
+                  data-confirm-accept="Sil"
+                  data-confirm-tone="danger"
+                  class="nx-filter-rule__delete"
+                  type="button"
+                  aria-label="Kuralı sil"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="nx-empty nx-filters-empty" style="grid-column: 1 / -1;">
+            <i class="fas fa-inbox"></i>
+            Henüz tanımlanmış bir ceza limiti bulunmuyor.
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

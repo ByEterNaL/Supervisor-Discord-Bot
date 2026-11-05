@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Kelime Filtresi{% endblock %}
+{% block heading %}Kelime Filtresi{% endblock %}
+{% block subheading %}Belirli metin kanallar&#305;nda istenmeyen kelimelerin kullan&#305;m&#305;n&#305; otomatik olarak engelleyin.{% endblock %}
+
+{% block content %}
+<div class="nx-grid-1 nx-filters-page">
+  <section class="panel nx-filters-panel" data-nx="tile">
+    <div class="panel-head nx-filters-panel__head">
+      <h3><i class="fas fa-shield-alt"></i> Yeni Kural Ekle</h3>
+    </div>
+    <form hx-post="/filters" hx-swap="none" class="settings-form nx-filters-form">
+      <div class="form-grid nx-filters-form-grid">
+        <label>
+          Hedef Oda
+          <select name="channel_id" required class="nx-filters-input">
+            <option value="" disabled selected>Oda se&ccedil;in...</option>
+            {% for opt in text_channel_picker_options %}
+              <option value="{{ opt.item_id }}">{{ opt.item_name }} - {{ opt.item_subtitle }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Yasakl&#305; Kelimeler
+          <input
+            type="text"
+            name="words"
+            required
+            placeholder="hile, hack, script (virg&uuml;lle ay&#305;r&#305;n)"
+            class="nx-filters-input"
+          >
+        </label>
+      </div>
+      <div class="actions-row actions-row--center nx-filters-actions">
+        <button type="submit" class="primary-button action-button nx-filters-submit">
+          <i class="fas fa-plus"></i> Kural&#305; Ekle
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <div class="nx-section nx-filters-section" id="filters-list" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#128203;</div>
+      <h2 class="nx-section__title">Mevcut Filtreler</h2>
+    </div>
+
+    <div class="nx-roster nx-filters-roster">
+      {% if filters %}
+        {% for filter in filters %}
+          <div class="nx-filter-rule" data-nx="tile">
+            <div class="nx-filter-rule__content">
+              <div class="nx-filter-rule__header">
+                <span class="nx-badge nx-filter-rule__channel">
+                  <i class="fas fa-hashtag"></i> {{ filter.channel_name }}
+                </span>
+                <span class="nx-filter-rule__channel-id">{{ filter.channel_id }}</span>
+              </div>
+              <div class="nx-filter-rule__words">
+                {% for word in filter.words %}
+                  <span class="nx-badge nx-badge--red nx-filter-rule__word">{{ word }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="nx-filter-rule__actions">
+              <button
+                hx-delete="/filters/{{ filter.id }}"
+                hx-target="#filters-list"
+                hx-swap="outerHTML"
+                hx-confirm="{{ filter.channel_name }} kanalındaki kelime filtresi kuralı kalıcı olarak kaldırılacak."
+                data-confirm-title="Filtre kuralını sil"
+                data-confirm-accept="Sil"
+                data-confirm-tone="danger"
+                class="nx-filter-rule__delete"
+                type="button"
+                aria-label="Filtreyi sil"
+              >
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="nx-empty nx-filters-empty">
+          <i class="fas fa-shield-alt"></i>
+          Hen&uuml;z eklenmi&#351; bir kelime filtresi yok. Yukar&#305;daki formu kullanarak yeni kurallar ekleyebilirsiniz.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Rol Takibi{% endblock %}
+{% block heading %}Rol Takibi{% endblock %}
+{% block subheading %}Sunucudaki riskli veya kritik yetkilere sahip rolleri inceleyin{% endblock %}
+
+{% block content %}
+<div class="nx-grid-1 nx-roles-page">
+  <div class="nx-section nx-roles-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#128737;&#65039;</div>
+      <h2 class="nx-section__title">Rol Listesi ve Risk Durumu</h2>
+    </div>
+
+    <div class="nx-roster nx-roles-roster">
+      {% for role in roles %}
+        {% if role.is_risky %}
+        <div class="nx-roster-row nx-role-row nx-role-row--{{ role.risk_level }}" data-nx="tile">
+          <div
+            class="nx-roster-row__avatar nx-role-row__avatar"
+            style="background-color: {{ role.color_hex }};"
+            aria-hidden="true"
+          ></div>
+          <div class="nx-roster-row__info nx-role-row__info">
+            <div
+              class="nx-roster-row__name nx-role-row__name"
+              style="color: {{ role.color_hex }};"
+              title="{{ role.role_name }}"
+            >
+              {{ role.role_name }}
+            </div>
+            <div class="nx-role-row__details">
+              <span class="nx-role-row__detail" title="{{ role.role_id }}">ID: {{ role.role_id }}</span>
+              <span class="nx-role-row__detail">S&#305;ra: {{ role.position }}</span>
+            </div>
+          </div>
+          <div class="nx-role-row__flags">
+            {% for flag in role.flags %}
+              <span class="nx-badge {% if role.risk_level == 'high' and loop.first %}nx-badge--red{% else %}nx-badge--orange{% endif %}">
+                {{ flag }}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      {% else %}
+        <div class="nx-empty" style="padding: 24px; text-align: center; color: #888;">Hen&uuml;z kritik yetkiye sahip rol tespit edilmedi veya veri yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="nx-section nx-roles-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#128221;</div>
+      <div>
+        <h2 class="nx-section__title">Rol ve İzin Geçmişi</h2>
+        <p class="nx-section__subtitle">Rol oluşturma, izin güncelleme ve üye rol atama akışı</p>
+      </div>
+    </div>
+
+    <div class="nx-role-history">
+      {% for item in role_history %}
+      <article class="nx-role-history-entry" data-nx="tile">
+        <div class="nx-role-history-entry__top">
+          <div class="nx-role-history-entry__role">
+            <span class="nx-role-history-entry__title">{{ item.role_name }}</span>
+            <span class="nx-badge" style="border-color: {{ item.action_tone }}; color: {{ item.action_tone }};">{{ item.action_label }}</span>
+          </div>
+          <div class="nx-role-history-entry__time">
+            <strong>{{ item.created_at_label }}</strong>
+            <span>{{ item.created_at_relative }}</span>
+          </div>
+        </div>
+
+        <div class="nx-role-history-entry__meta">
+          <span>Rol ID: {{ item.role_id }}</span>
+          <span>Yapan: {{ item.actor_display }}</span>
+        </div>
+
+        <div class="nx-role-history-entry__chips">
+          {% for summary in item.summaries %}
+          <span class="nx-badge nx-role-history-entry__chip {% if summary.is_risky %}nx-role-history-entry__chip--risk{% endif %}">{{ summary.text }}</span>
+          {% endfor %}
+        </div>
+      </article>
+      {% else %}
+      <div class="nx-empty">Henüz kaydedilmiş rol değişikliği yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

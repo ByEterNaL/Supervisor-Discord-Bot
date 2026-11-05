@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Detay{% endblock %}
+{% block heading %}{{ member_data.detail.display_name if member_data.detail else 'Detay' }}{% endblock %}
+{% block subheading %}{{ 'Yetkili' if member_type == 'staff' else 'Kullanici' }} detay paneli{% endblock %}
+
+{% block content %}
+{% if member_data.detail %}
+<section class="cards">
+  <article class="stat-card">
+    <span>Aktif Ses (saat)</span>
+    <strong class="count-up" data-value="{{ member_data.detail.voice_active_seconds | hours_value }}">0</strong>
+  </article>
+  <article class="stat-card">
+    <span>Kamera (saat)</span>
+    <strong class="count-up" data-value="{{ member_data.detail.camera_seconds | hours_value }}">0</strong>
+  </article>
+  <article class="stat-card">
+    <span>Yayin (saat)</span>
+    <strong class="count-up" data-value="{{ member_data.detail.stream_seconds | hours_value }}">0</strong>
+  </article>
+  <article class="stat-card">
+    <span>Toplam Mesaj</span>
+    <strong class="count-up" data-value="{{ member_data.detail.total_message_count }}">0</strong>
+  </article>
+  {% if member_type == 'staff' %}
+  <article class="stat-card">
+    <span>Claim</span>
+    <strong class="count-up" data-value="{{ member_data.detail.ticket_claim_count }}">0</strong>
+  </article>
+  <article class="stat-card">
+    <span>Yetki Kullanimi</span>
+    <strong class="count-up" data-value="{{ member_data.detail.moderation_ban_count + member_data.detail.moderation_kick_count + member_data.detail.moderation_timeout_count }}">0</strong>
+  </article>
+  <article class="stat-card">
+    <span>Timeout</span>
+    <strong class="count-up" data-value="{{ member_data.detail.moderation_timeout_count }}">0</strong>
+  </article>
+  {% else %}
+  <article class="stat-card">
+    <span>Acilan Ticket</span>
+    <strong class="count-up" data-value="{{ member_data.detail.ticket_opened_count }}">0</strong>
+  </article>
+  {% endif %}
+</section>
+
+{% if member_data.rank and member_data.rank.profile %}
+<section class="grid two">
+  <article class="panel">
+    <div class="panel-head">
+      <h3>Ses Rütbesi</h3>
+      <p>Toplam XP, sıra ve ödül rolü görünümü</p>
+    </div>
+    <div class="rank-detail-card">
+      <div class="rank-detail-card__value">Seviye {{ member_data.rank.profile.voice_progress.level }}</div>
+      <div class="rank-detail-card__meta">{{ member_data.rank.profile.voice_xp }} XP · Sıra {{ member_data.rank.profile.voice_rank }}</div>
+      <div class="rank-progress">
+        <div class="rank-progress__fill" style="width: {{ member_data.rank.profile.voice_progress.progress_percent }}%;"></div>
+      </div>
+      <div class="rank-detail-card__footer">
+        <span>Bu seviye: {{ member_data.rank.profile.voice_progress.current_level_xp }} XP</span>
+        <span>Sonraki seviye: {{ member_data.rank.profile.voice_progress.next_level_xp }} XP</span>
+      </div>
+      {% if member_data.rank.profile.voice_rewards %}
+      <div class="rank-detail-card__badges">
+        {% for badge in member_data.rank.profile.voice_rewards %}
+        <span class="nx-badge nx-badge--orange">{{ badge }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  <article class="panel">
+    <div class="panel-head">
+      <h3>Metin Rütbesi</h3>
+      <p>Toplam XP, sıra ve ödül rolü görünümü</p>
+    </div>
+    <div class="rank-detail-card">
+      <div class="rank-detail-card__value">Seviye {{ member_data.rank.profile.text_progress.level }}</div>
+      <div class="rank-detail-card__meta">{{ member_data.rank.profile.text_xp }} XP · Sıra {{ member_data.rank.profile.text_rank }}</div>
+      <div class="rank-progress">
+        <div class="rank-progress__fill rank-progress__fill--teal" style="width: {{ member_data.rank.profile.text_progress.progress_percent }}%;"></div>
+      </div>
+      <div class="rank-detail-card__footer">
+        <span>Bu seviye: {{ member_data.rank.profile.text_progress.current_level_xp }} XP</span>
+        <span>Sonraki seviye: {{ member_data.rank.profile.text_progress.next_level_xp }} XP</span>
+      </div>
+      {% if member_data.rank.profile.text_rewards %}
+      <div class="rank-detail-card__badges">
+        {% for badge in member_data.rank.profile.text_rewards %}
+        <span class="nx-badge nx-badge--teal">{{ badge }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3>Son Rank Olayları</h3>
+    <p>XP artışları ve seviye atlamalar</p>
+  </div>
+  <div class="nx-roster">
+    {% for event in member_data.rank.events %}
+    <div class="rank-event-row" data-nx="tile">
+      <strong>{{ event.summary }}</strong>
+      <span>{{ event.created_at_label }}</span>
+    </div>
+    {% else %}
+    <div class="nx-empty">Henüz rank olayı yok.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if member_data.moderation_cases %}
+<section class="panel">
+  <div class="panel-head">
+    <h3>Ceza Geçmişi ve Aktif Vakalar</h3>
+    <p>Bu üyeye ait son moderasyon kayıtları</p>
+  </div>
+  <div class="nx-roster nx-scroll-region">
+    {% for item in member_data.moderation_cases %}
+    <article class="rank-row-card" data-nx="tile">
+      <div class="rank-row-card__body">
+        <div class="rank-row-card__header">
+          <div>
+            <div class="nx-roster-row__name">#{{ item.id }} · {{ item.case_label }}</div>
+            <div class="nx-roster-row__meta">{{ item.created_at_label }} · {{ item.created_at_relative }} · {{ item.actor_name }}</div>
+          </div>
+          <div class="rank-row-card__stats">
+            <span class="nx-badge {% if item.status == 'active' %}nx-badge--orange{% elif item.status in ['completed', 'removed', 'expired'] %}nx-badge--teal{% else %}nx-badge--red{% endif %}">{{ item.status_label }}</span>
+            {% if item.points %}
+            <span class="nx-badge nx-badge--orange">{{ item.points }} puan</span>
+            {% endif %}
+            {% if item.duration_label %}
+            <span class="nx-badge nx-badge--teal">{{ item.duration_label }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="rank-row-card__footer">
+          <span>DM: {{ item.dm_status_label }}</span>
+          {% if item.resolved_at_label and item.resolved_at_label != '-' %}
+          <span>Çözüm: {{ item.resolved_at_label }}</span>
+          {% endif %}
+        </div>
+        <p class="nx-alert__desc">{{ item.reason or 'Sebep belirtilmedi.' }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="grid two">
+  <article class="panel">
+    <div class="panel-head">
+      <h3>Oda Dağılımı</h3>
+      <p>En çok süre geçirilen ses odaları</p>
+    </div>
+    {% if member_data.channel_scene["items"] %}
+    <div class="nx-room-breakdown">
+      <div class="nx-room-breakdown__summary">
+        <span>Toplam aktif ses yükü</span>
+        <strong>{{ member_data.channel_scene.total_hours_label }}</strong>
+      </div>
+      {% for item in member_data.channel_scene["items"] %}
+      <article class="nx-room-breakdown__row" style="--room-accent: {{ item.accent }};">
+        <div class="nx-room-breakdown__rank">#{{ item.rank }}</div>
+        <div class="nx-room-breakdown__copy">
+          <strong>{{ item.name }}</strong>
+          <span>{{ item.channel_id }}</span>
+        </div>
+        <div class="nx-room-breakdown__metric">
+          <strong>{{ item.hours_label }}</strong>
+          <span>{{ item.share_label }}</span>
+        </div>
+        <div class="nx-room-breakdown__bar">
+          <span style="width: {{ item.fill_percent }}%;"></span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="chart-empty-state">Gösterilecek ses oda dağılımı verisi yok.</div>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <div class="panel-head">
+      <h3>Saatlik Isı Haritası</h3>
+      <p>Hangi saatlerde gerçekten aktif olunduğunu gösterir</p>
+    </div>
+    {% if member_data.heatmap_scene.has_activity %}
+    <div class="nx-hour-heatmap">
+      <div class="nx-hour-heatmap__summary">
+        <span>Zirve saat</span>
+        <strong>{{ member_data.heatmap_scene.peak_label }}</strong>
+        <small>{{ member_data.heatmap_scene.peak_hours_label }}</small>
+      </div>
+      <div class="nx-hour-heatmap__grid">
+        {% for cell in member_data.heatmap_scene.cells %}
+        <article class="nx-hour-heatmap__cell nx-hour-heatmap__cell--{{ cell.intensity_class }}">
+          <span>{{ cell.hour_label }}</span>
+          <strong>{{ cell.hours_label }}</strong>
+          <small>{{ cell.intensity_label }}</small>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="chart-empty-state">Gösterilecek saatlik aktiflik verisi yok.</div>
+    {% endif %}
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3>Son Ticket Katkilari</h3>
+    <p>Bu uye ile iliskili son 10 ticket</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Kanal</th>
+          <th>Durum</th>
+          <th>Olusma</th>
+          <th>Claim</th>
+          <th>Mesaj</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in member_data.tickets %}
+        <tr>
+          <td>#{{ ticket.id }}</td>
+          <td>{{ ticket.channel_id }}</td>
+          <td>{{ ticket.status }}</td>
+          <td>{{ ticket.created_at }}</td>
+          <td>{{ ticket.claimed_by or '-' }}</td>
+          <td>{{ ticket.message_count }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty-state">Ticket katkisi bulunmuyor.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<section class="panel"><div class="empty-state">Kayit bulunamadi.</div></section>
+{% endif %}
+{% endblock %}

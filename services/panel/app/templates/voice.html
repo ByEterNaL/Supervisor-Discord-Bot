@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Ses Analytics{% endblock %}
+{% block heading %}Ses Analytics{% endblock %}
+{% block subheading %}Aktif ses, kamera ve yayin pozitif sureleri{% endblock %}
+
+{% block content %}
+<!-- Signal HQ Hero -->
+<div class="nx-hero" data-nx="tile">
+  <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
+    <!-- Left: Copy -->
+    <div style="flex: 1; min-width: 280px;">
+      <div class="nx-hero__eyebrow">📡 Canlı Ses Durumu</div>
+      <h1 class="nx-hero__title">Sunucudaki anlık ses trafiği</h1>
+      <p class="nx-hero__desc">
+        Yetkili ve üyelerin ses etkinliklerini buradan takip edebilirsin. Odaların yoğunluğunu ve 
+        yetkililerin aktiflik durumunu tek bir ekranda gör.
+      </p>
+      <div style="margin-top: 14px; font-size: 0.85rem; color: var(--nx-text-dim);">
+        {% if view.top_channel %}
+        En kalabalık oda: <strong style="color: var(--nx-text);">{{ view.top_channel.channel_name }}</strong> · {{ view.top_channel.hours }} saat
+        {% else %}
+        Gosterilecek aktif oda verisi yok.
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Center: Radar -->
+    <div class="nx-radar" data-nx="tile">
+      <div class="nx-radar__ring nx-radar__ring--1"></div>
+      <div class="nx-radar__ring nx-radar__ring--2"></div>
+      <div class="nx-radar__ring nx-radar__ring--3"></div>
+      <div class="nx-radar__sweep"></div>
+      <div class="nx-radar__core">
+        <span class="nx-radar__value count-up" data-value="{{ view.summary.staff_voice_hours }}">0</span>
+        <span class="nx-radar__label">saat yetkili ses</span>
+      </div>
+    </div>
+
+    <!-- Right: Quick Stats -->
+    <div style="display: flex; flex-direction: column; gap: 14px; min-width: 200px;">
+      <div class="nx-tile nx-tile--accent nx-tile--teal" data-nx="tile" style="padding: 14px 18px;">
+        <span class="nx-stat-block__label">Kamera ve Yayın</span>
+        <div class="nx-stat-block__value" style="font-size: 1.4rem;">{{ view.summary.total_media_hours }} saat</div>
+      </div>
+      <div class="nx-tile nx-tile--accent nx-tile--blue" data-nx="tile" style="padding: 14px 18px;">
+        <span class="nx-stat-block__label">Aktif Oda</span>
+        <div class="nx-stat-block__value" style="font-size: 1.4rem;">{{ view.summary.active_room_count }}</div>
+      </div>
+      <div class="nx-tile nx-tile--accent nx-tile--orange" data-nx="tile" style="padding: 14px 18px;">
+        <span class="nx-stat-block__label">Yetkili / Üye</span>
+        <div class="nx-stat-block__value" style="font-size: 1.4rem;">{{ view.summary.active_staff_count }} / {{ view.summary.active_user_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Media Mix -->
+<div class="nx-grid-3 nx-mb-md">
+  {% for item in view.media_mix %}
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <div class="nx-flex-between nx-mb-sm">
+      <span class="nx-stat-block__label">{{ item.label }}</span>
+      <span class="nx-badge" style="background: rgba(0,0,0,0.2); border-color: {{ item.tone }}; color: {{ item.tone }};">{{ item.percentage }}%</span>
+    </div>
+    <div class="nx-stat-block__value" style="font-size: 1.6rem; margin-bottom: 10px;">{{ item.hours }} saat</div>
+    <div class="nx-bar__track">
+      <div class="nx-bar__fill" data-nx-bar="{{ item.percentage }}" style="background: {{ item.tone }};"></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Channels + Staff/Users -->
+<div class="nx-grid-2">
+  <!-- Channel List -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">🔊</div>
+      <h2 class="nx-section__title">Odalar Arası Dağılım</h2>
+    </div>
+
+    <div class="nx-channel-list">
+      {% for item in view.channels %}
+      <div class="nx-channel-row" data-nx="tile">
+        <span class="nx-channel-row__rank">{{ "%02d" | format(loop.index) }}</span>
+        <div class="nx-channel-row__body">
+          <div class="nx-channel-row__name">{{ item.channel_name }}</div>
+          <div class="nx-channel-row__bar">
+            <div class="nx-channel-row__fill" data-nx-bar="{{ item.share_percentage }}" style="background: {{ item.accent }};"></div>
+          </div>
+        </div>
+        <div class="nx-channel-row__stats">
+          <span class="nx-channel-row__hours">{{ item.hours }} saat</span>
+          <span class="nx-channel-row__pct">{{ item.share_percentage }}%</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Bu periyotta oda verisi yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Staff + Users -->
+  <div class="nx-flex-col nx-gap-md">
+    <!-- Staff Pulse -->
+    <div class="nx-section" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon">⚡</div>
+        <h2 class="nx-section__title">Aktif Yetkililer</h2>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        {% for item in view.staff %}
+        <div class="nx-voice-leader" data-nx="tile">
+          <div class="nx-voice-leader__head">
+            <div class="nx-voice-leader__rank">{{ item.rank }}</div>
+            <div class="nx-voice-leader__avatar">
+              {% if item.avatar_url %}
+              <img src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+              {% else %}
+              {{ item.initials }}
+              {% endif %}
+            </div>
+            <div class="nx-voice-leader__info">
+              <div class="nx-voice-leader__name">{{ item.display_name }}</div>
+              <div class="nx-voice-leader__subtitle">{{ item.total_hours }} saat toplam</div>
+            </div>
+          </div>
+          <div class="nx-voice-leader__bar">
+            <div class="nx-voice-leader__fill" data-nx-bar="{{ item.presence_percentage }}" style="background: #59d0c2;"></div>
+          </div>
+          <div class="nx-voice-leader__chips">
+            <span class="nx-voice-chip">Ses {{ item.voice_hours }} saat</span>
+            <span class="nx-voice-chip">Kamera {{ item.camera_hours }} saat</span>
+            <span class="nx-voice-chip">Yayin {{ item.stream_hours }} saat</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="nx-empty">Aktif yetkili verisi yok.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- User Drift -->
+    <div class="nx-section" data-nx="tile">
+      <div class="nx-section__header">
+        <div class="nx-section__icon">👤</div>
+        <h2 class="nx-section__title">Sesteki Üyeler</h2>
+      </div>
+
+      <div class="nx-roster">
+        {% for item in view.users %}
+        <div class="nx-roster-row" data-nx="tile" style="grid-template-columns: 28px 1fr auto;">
+          <div class="nx-roster-row__rank">{{ item.rank }}</div>
+          <div class="nx-roster-row__info">
+            <div class="nx-roster-row__name">{{ item.display_name }}</div>
+            <div class="nx-roster-row__meta">{{ item.voice_hours }} saat aktif ses</div>
+          </div>
+          <div style="width: 120px;">
+            <div class="nx-bar__track">
+              <div class="nx-bar__fill" data-nx-bar="{{ item.presence_percentage }}" style="background: #ff9d3f;"></div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="nx-empty">Aktif kullanici sesi yok.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

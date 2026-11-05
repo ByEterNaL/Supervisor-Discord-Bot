@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Moderasyon Sistemi{% endblock %}
+{% block heading %}Moderasyon Sistemi{% endblock %}
+{% block subheading %}Komut yetkilerini, jail rolünü ve moderasyon varsayılanlarını yönetin{% endblock %}
+
+{% block content %}
+{% macro render_picker(label, input_name, selected_ids, selected_items, options, search_placeholder, empty_label, max_select=0) -%}
+<label
+  class="role-field"
+  data-picker-field
+  data-picker-empty-label="{{ empty_label }}"
+  data-picker-max="{{ max_select }}">
+  <span class="role-field-label">{{ label }}</span>
+  <div class="role-picker-surface">
+    <div class="role-picker-toolbar">
+      <input
+        class="role-filter-input"
+        type="text"
+        placeholder="{{ search_placeholder }}"
+        data-picker-filter>
+      <span class="role-picker-count" data-picker-count>
+        {% if selected_items %}
+          {% if max_select == 1 %}
+            Seçildi
+          {% else %}
+            {{ selected_items | length }} seçili
+          {% endif %}
+        {% else %}
+          {{ empty_label }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="role-selection-summary" data-picker-summary>
+      {% if selected_items %}
+        {% for item in selected_items %}
+        <button type="button" class="role-chip" title="{{ item.item_id }}">
+          <span class="role-chip-dot" style="background: {{ item.item_color }}"></span>
+          <span>{{ item.item_name }}</span>
+          <span class="role-chip-remove">x</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        <span class="role-picker-placeholder">{{ empty_label }}</span>
+      {% endif %}
+    </div>
+    <div class="role-option-grid" data-picker-options>
+      {% for item in options %}
+      {% set is_selected = item.item_id in selected_ids %}
+      <button
+        type="button"
+        class="role-option-card {% if is_selected %}is-selected{% endif %}"
+        data-picker-option
+        data-option-id="{{ item.item_id }}"
+        data-option-name="{{ item.item_name }}"
+        data-option-subtitle="{{ item.item_subtitle }}"
+        data-option-color="{{ item.item_color }}"
+        data-option-search="{{ item.item_search }}"
+        aria-pressed="{% if is_selected %}true{% else %}false{% endif %}">
+        <span class="role-option-card-dot" style="background: {{ item.item_color }}"></span>
+        <span class="role-option-card-text">
+          <strong>{{ item.item_name }}</strong>
+          <span>{{ item.item_subtitle }}</span>
+        </span>
+        <span class="role-option-card-state" data-picker-check>
+          {% if is_selected %}Seçildi{% else %}Ekle{% endif %}
+        </span>
+      </button>
+      {% endfor %}
+      <div class="role-option-empty" data-picker-empty {% if options %}hidden{% endif %}>
+        Aramana uyan seçenek bulunamadı.
+      </div>
+    </div>
+    <select class="role-native-select" name="{{ input_name }}" {% if max_select != 1 %}multiple{% endif %} data-picker-select tabindex="-1" aria-hidden="true">
+      {% for item in options %}
+      <option value="{{ item.item_id }}" {% if item.item_id in selected_ids %}selected{% endif %}>{{ item.item_name }}</option>
+      {% endfor %}
+      {% for sel in selected_items %}
+      {% set found = namespace(val=false) %}
+      {% for opt in options %}
+        {% if opt.item_id == sel.item_id %}{% set found.val = true %}{% endif %}
+      {% endfor %}
+      {% if not found.val %}
+      <option value="{{ sel.item_id }}" selected>{{ sel.item_name }}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+</label>
+{%- endmacro %}
+
+{% if saved %}
+<section class="flash success">Moderasyon ayarları kaydedildi.</section>
+{% endif %}
+
+<form class="settings-form" method="post" action="/moderation">
+  <section class="panel">
+    <div class="panel-head"><h3>Komut Yetkileri</h3><p>Yetki rolleri ile ceza rolleri birbirinden tamamen ayrıdır</p></div>
+    <div class="form-grid">
+      {{ render_picker("Ban Yetkilisi Rolleri", "ban_role_ids", config.roles.banRoleIds, selected_items.banRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Kick Yetkilisi Rolleri", "kick_role_ids", config.roles.kickRoleIds, selected_items.kickRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Unban Yetkilisi Rolleri", "unban_role_ids", config.roles.unbanRoleIds, selected_items.unbanRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Timeout / Mute Yetkilisi Rolleri", "timeout_role_ids", config.roles.timeoutRoleIds, selected_items.timeoutRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Warn Yetkilisi Rolleri", "warn_role_ids", config.roles.warnRoleIds, selected_items.warnRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Jail Yetkilisi Rolleri", "jail_role_ids", config.roles.jailRoleIds, selected_items.jailRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Mesaj Moderasyon Yetkilisi Rolleri", "message_moderation_role_ids", config.roles.messageModerationRoleIds, selected_items.messageModerationRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Kanal Moderasyon Yetkilisi Rolleri", "channel_moderation_role_ids", config.roles.channelModerationRoleIds, selected_items.channelModerationRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Geçmiş İnceleme Rolleri", "history_role_ids", config.roles.historyRoleIds, selected_items.historyRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+      {{ render_picker("Ticket Yetkilisi Rolleri", "ticket_role_ids", config.roles.ticketRoleIds, selected_items.ticketRoleIds, role_picker_options, "Rol ara ve seç", "Rol seçilmedi") }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Sistem Varsayılanları</h3><p>Ceza rolleri, log ve güvenli akış ayarları</p></div>
+    <div class="form-grid">
+      {{ render_picker("Jailed Rolü", "moderation_jail_role_id", [config.moderation.jailRoleId] if config.moderation.jailRoleId else [], selected_items.moderationJailRoleId, role_picker_options, "Rol ara ve seç", "Rol seçilmedi", 1) }}
+      {{ render_picker("Muted Rolü", "moderation_muted_role_id", [config.moderation.mutedRoleId] if config.moderation.mutedRoleId else [], selected_items.moderationMutedRoleId, role_picker_options, "Rol ara ve seç", "Rol seçilmedi", 1) }}
+      {{ render_picker("Moderasyon Log Kanalı", "moderation_log_channel_id", [config.moderation.logChannelId] if config.moderation.logChannelId else [], selected_items.moderationLogChannelId, log_channel_picker_options, "Kanal ara ve seç", "Kanal seçilmedi", 1) }}
+      <label class="toggle-field">
+        <span class="toggle-field__text">Varsayılan DM bildirimi açık</span>
+        <input type="checkbox" name="moderation_default_dm_enabled" {% if config.moderation.defaultDmEnabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label class="toggle-field">
+        <span class="toggle-field__text">Güvenli önizleme akışı açık</span>
+        <input type="checkbox" name="moderation_safe_flow_enabled" {% if config.moderation.safeFlowEnabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label class="toggle-field">
+        <span class="toggle-field__text">Global ban aktif</span>
+        <input type="checkbox" name="moderation_global_ban_enabled" {% if config.moderation.globalBanEnabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label>Varsayılan Timeout (dk)<input type="number" name="moderation_default_timeout_minutes" value="{{ config.moderation.defaultTimeoutMinutes }}"></label>
+      <label>Varsayılan Warn Puanı<input type="number" name="moderation_default_warn_points" value="{{ config.moderation.defaultWarnPoints }}"></label>
+      <label>Purge Üst Limiti<input type="number" name="moderation_purge_max_limit" value="{{ config.moderation.purgeMaxLimit }}"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Otomatik Kurulum</h3><p>Discord içinden <code>/moderson kurulum</code> komutu ile varsayılan rolleri oluşturup boş alanları otomatik doldurabilirsiniz</p></div>
+  </section>
+
+  <div class="actions-row actions-row--center">
+    <button type="submit" class="primary-button action-button">
+      <i class="fas fa-floppy-disk"></i>
+      <span>Kaydet</span>
+    </button>
+  </div>
+</form>
+{% endblock %}

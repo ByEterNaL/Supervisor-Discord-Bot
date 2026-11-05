@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Ayarlar{% endblock %}
+{% block heading %}Ayarlar{% endblock %}
+{% block subheading %}Bot ve panel davranislarini veritabanindan yonet{% endblock %}
+
+{% block content %}
+{% macro render_picker(label, input_name, selected_ids, selected_items, options, search_placeholder, empty_label, max_select=0) -%}
+<label
+  class="role-field"
+  data-picker-field
+  data-picker-empty-label="{{ empty_label }}"
+  data-picker-max="{{ max_select }}">
+  <span class="role-field-label">{{ label }}</span>
+  <div class="role-picker-surface">
+    <div class="role-picker-toolbar">
+      <input
+        class="role-filter-input"
+        type="text"
+        placeholder="{{ search_placeholder }}"
+        data-picker-filter>
+      <span class="role-picker-count" data-picker-count>
+        {% if selected_items %}
+          {% if max_select == 1 %}
+            Secildi
+          {% else %}
+            {{ selected_items | length }} secili
+          {% endif %}
+        {% else %}
+          {{ empty_label }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="role-selection-summary" data-picker-summary>
+      {% if selected_items %}
+        {% for item in selected_items %}
+        <button type="button" class="role-chip" title="{{ item.item_id }}">
+          <span class="role-chip-dot" style="background: {{ item.item_color }}"></span>
+          <span>{{ item.item_name }}</span>
+          <span class="role-chip-remove">x</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        <span class="role-picker-placeholder">{{ empty_label }}</span>
+      {% endif %}
+    </div>
+    <div class="role-option-grid" data-picker-options>
+      {% for item in options %}
+      {% set is_selected = item.item_id in selected_ids %}
+      <button
+        type="button"
+        class="role-option-card {% if is_selected %}is-selected{% endif %}"
+        data-picker-option
+        data-option-id="{{ item.item_id }}"
+        data-option-name="{{ item.item_name }}"
+        data-option-subtitle="{{ item.item_subtitle }}"
+        data-option-color="{{ item.item_color }}"
+        data-option-search="{{ item.item_search }}"
+        aria-pressed="{% if is_selected %}true{% else %}false{% endif %}">
+        <span class="role-option-card-dot" style="background: {{ item.item_color }}"></span>
+        <span class="role-option-card-text">
+          <strong>{{ item.item_name }}</strong>
+          <span>{{ item.item_subtitle }}</span>
+        </span>
+        <span class="role-option-card-state" data-picker-check>
+          {% if is_selected %}Secildi{% else %}Ekle{% endif %}
+        </span>
+      </button>
+      {% endfor %}
+      <div class="role-option-empty" data-picker-empty {% if options %}hidden{% endif %}>
+        Aramana uyan secenek bulunamadi.
+      </div>
+    </div>
+    <select class="role-native-select" name="{{ input_name }}" multiple data-picker-select tabindex="-1" aria-hidden="true">
+      {% for item in options %}
+      <option value="{{ item.item_id }}" {% if item.item_id in selected_ids %}selected{% endif %}>
+        {{ item.item_name }}
+      </option>
+      {% endfor %}
+      {% for sel in selected_items %}
+      {% set found = namespace(val=false) %}
+      {% for opt in options %}
+        {% if opt.item_id == sel.item_id %}{% set found.val = true %}{% endif %}
+      {% endfor %}
+      {% if not found.val %}
+      <option value="{{ sel.item_id }}" selected>{{ sel.item_name }}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+</label>
+{%- endmacro %}
+
+{% if saved %}
+<section class="flash success">Ayarlar kaydedildi ve botlara config degisikligi sinyali gonderildi.</section>
+{% endif %}
+{% if sync_requested %}
+<section class="flash success">Sunucu senkronizasyon istegi gonderildi. Bot arka planda mesaj gecmisini cekmeye baslayacak.</section>
+{% endif %}
+
+<form class="settings-form" method="post" action="/settings" id="settings-form">
+  <section class="panel">
+    <div class="panel-head"><h3>Rol ve Yetki</h3><p>Yazdikca roller filtrelenir, secilen roller chip olarak eklenir</p></div>
+    {% if not role_picker_options %}
+    <div class="empty-state">Rol listesi henuz gelmedi. Bot acildiktan sonra sayfayi yenile.</div>
+    {% endif %}
+    <div class="form-grid">
+      {{ render_picker("Staff Rolleri", "staff_role_ids", config.roles.staffRoleIds, selected_items.staffRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Ust Yetkili Rolleri", "upper_staff_role_ids", config.roles.upperStaffRoleIds, selected_items.upperStaffRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Supervisor Rolleri", "supervisor_role_ids", config.roles.supervisorRoleIds, selected_items.supervisorRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Ban Rolleri", "ban_role_ids", config.roles.banRoleIds, selected_items.banRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Kick Rolleri", "kick_role_ids", config.roles.kickRoleIds, selected_items.kickRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Ses Izleme</h3><p>AFK ve ignore listeleri artik kanal secici ile yonetilir</p></div>
+    {% if not voice_channel_picker_options and not non_category_channel_picker_options and not category_picker_options %}
+    <div class="empty-state">Kanal listesi henuz gelmedi. Bot acildiktan sonra sayfayi yenile.</div>
+    {% endif %}
+    <div class="form-grid">
+      {{ render_picker("AFK Kanali", "afk_channel_id", [config.voice.afkChannelId] if config.voice.afkChannelId else [], selected_items.afkChannelId, voice_channel_picker_options, "Ses kanali ara ve sec", "Kanal secilmedi", 1) }}
+      {{ render_picker("Ignore Kanallari", "ignored_channel_ids", config.voice.ignoredChannelIds, selected_items.ignoredChannelIds, non_category_channel_picker_options, "Kanal ara ve sec", "Kanal secilmedi") }}
+      {{ render_picker("Ignore Kategorileri", "ignored_category_ids", config.voice.ignoredCategoryIds, selected_items.ignoredCategoryIds, category_picker_options, "Kategori ara ve sec", "Kategori secilmedi") }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Ticket Akışı</h3><p>Panel embedleri, kategori, yetkili çağırma ve soru ayarlari</p></div>
+    <div class="form-grid">
+      {{ render_picker("Ticket Yetkilisi Rolleri", "ticket_role_ids", config.roles.ticketRoleIds, selected_items.ticketRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Panel Kanallari", "panel_channel_ids", config.ticket.panelChannelIds, selected_items.panelChannelIds, text_channel_picker_options, "Yazi kanali ara ve sec", "Kanal secilmedi") }}
+      <label>
+        Aktif Ticket Kategori Modu
+        <select name="active_category_mode" data-toggle-target="active-category-manual" data-toggle-value="manual">
+          <option value="auto" {% if config.ticket.activeCategoryMode == "auto" %}selected{% endif %}>Otomatik</option>
+          <option value="manual" {% if config.ticket.activeCategoryMode == "manual" %}selected{% endif %}>Manuel</option>
+        </select>
+      </label>
+      <div
+        class="conditional-field {% if config.ticket.activeCategoryMode != 'manual' %}is-hidden{% endif %}"
+        data-conditional-field="active-category-manual">
+        {{ render_picker("Aktif Ticket Kategorisi", "category_parent_id", [config.ticket.categoryParentId] if config.ticket.categoryParentId else [], selected_items.categoryParentId, category_picker_options, "Kategori ara ve sec", "Kategori secilmedi", 1) }}
+      </div>
+      <label>
+        Arsiv Kategori Modu
+        <select name="archive_category_mode" data-toggle-target="archive-category-manual" data-toggle-value="manual">
+          <option value="auto" {% if config.ticket.archiveCategoryMode == "auto" %}selected{% endif %}>Otomatik</option>
+          <option value="manual" {% if config.ticket.archiveCategoryMode == "manual" %}selected{% endif %}>Manuel</option>
+        </select>
+      </label>
+      <div
+        class="conditional-field {% if config.ticket.archiveCategoryMode != 'manual' %}is-hidden{% endif %}"
+        data-conditional-field="archive-category-manual">
+        {{ render_picker("Arsiv Kategorisi", "archive_category_id", [config.ticket.archiveCategoryId] if config.ticket.archiveCategoryId else [], selected_items.archiveCategoryId, category_picker_options, "Kategori ara ve sec", "Kategori secilmedi", 1) }}
+      </div>
+      <label>Embed Gorsel URL<input name="embed_image_url" value="{{ config.ticket.embedImageUrl }}"></label>
+      <label>Embed Baslik<input name="embed_title" value="{{ config.ticket.embedTitle }}"></label>
+      <label>Aciklama<textarea name="embed_description">{{ config.ticket.embedDescription }}</textarea></label>
+      <label>Hos Geldin Baslik<input name="welcome_title" value="{{ config.ticket.welcomeTitle }}"></label>
+      <label>Hos Geldin Mesaj<textarea name="welcome_description">{{ config.ticket.welcomeDescription }}</textarea></label>
+      <label>Katılım Baslik<input name="join_welcome_title" value="{{ config.ticket.joinWelcomeTitle }}"></label>
+      <label>Katılım Mesaj<textarea name="join_welcome_description">{{ config.ticket.joinWelcomeDescription }}</textarea></label>
+      <label>Onboarding Sorusu<input name="onboarding_question" value="{{ config.ticket.onboardingQuestion }}"></label>
+      <label>Evet Etiketi<input name="onboarding_yes_label" value="{{ config.ticket.onboardingYesLabel }}"></label>
+      <label>Hayir Etiketi<input name="onboarding_no_label" value="{{ config.ticket.onboardingNoLabel }}"></label>
+      <label>Cagirma Cooldown (sn)<input type="number" name="call_cooldown_seconds" value="{{ config.ticket.callCooldownSeconds }}"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Kanıtsız İşlemler</h3><p>Moderatör yetki kullanımı kanıt denetimi</p></div>
+    <div class="form-grid">
+      {{ render_picker("Denetlenecek Roller", "unproven_target_role_ids", config.unproven.targetRoleIds, selected_items.unprovenTargetRoleIds, role_picker_options, "Rol ara ve sec", "Rol secilmedi") }}
+      {{ render_picker("Kanıt Kanalı", "unproven_proof_channel_id", [config.unproven.proofChannelId] if config.unproven.proofChannelId else [], selected_items.unprovenProofChannelId, text_channel_picker_options, "Yazi kanali ara ve sec", "Kanal secilmedi", 1) }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Alarm Esikleri</h3><p>Worker tarafinda taranan ticket alarm kurallari</p></div>
+    <div class="form-grid">
+      <label>Stale Ticket Dakika<input type="number" name="stale_ticket_minutes" value="{{ config.alerts.staleTicketMinutes }}"></label>
+      <label>Claimsiz Ticket Dakika<input type="number" name="unclaimed_ticket_minutes" value="{{ config.alerts.unclaimedTicketMinutes }}"></label>
+      <label>Acik Ticket Esigi<input type="number" name="open_ticket_threshold" value="{{ config.alerts.openTicketThreshold }}"></label>
+    </div>
+  </section>
+
+</form>
+
+<div class="settings-interstitial-action">
+  <button type="submit" form="settings-form" class="primary-button action-button">
+    <i class="fas fa-floppy-disk"></i>
+    <span>Kaydet</span>
+  </button>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3>Sunucu Icin Senkron Et</h3>
+    <p>Eski mesajlar yavas yavas taranir, ulasilabilen ban ve kick audit loglari da geri cekilir</p>
+  </div>
+  <div class="sync-status-grid">
+    <article class="sync-status-card">
+      <span>Durum</span>
+      <strong>{{ sync_status.status_label }}</strong>
+    </article>
+    <article class="sync-status-card">
+      <span>Kanal Ilerlemesi</span>
+      <strong>{{ sync_status.channels_completed }} / {{ sync_status.channels_total }}</strong>
+    </article>
+    <article class="sync-status-card">
+      <span>Taranan Mesaj</span>
+      <strong>{{ sync_status.scanned_messages }}</strong>
+    </article>
+    <article class="sync-status-card">
+      <span>Aktif Kanal</span>
+      <strong>{{ sync_status.current_channel_name or '-' }}</strong>
+    </article>
+  </div>
+  {% if sync_status.last_error %}
+  <div class="sync-note danger">Son hata: {{ sync_status.last_error }}</div>
+  {% else %}
+  <div class="sync-note">Mesaj kolonlari artik sunucunun toplam mesaj sayisini kullanir. Ban ve kick geri dolumu ise Discord audit log'unun sundugu kadar veriyle sinirlidir.</div>
+  {% endif %}
+  <form method="post" action="/settings/sync-history" class="sync-action-form sync-action-form--center">
+    <button type="submit" class="primary-button secondary-button action-button">
+      <i class="fas fa-arrows-rotate"></i>
+      <span>Senkronizasyonu Başlat</span>
+    </button>
+  </form>
+</section>
+{% endblock %}

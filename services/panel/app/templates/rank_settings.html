@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Seviye Sistemi{% endblock %}
+{% block heading %}Seviye Sistemi{% endblock %}
+{% block subheading %}Ses ve metin XP akışını, ödül rollerini ve backfill durumunu yönetin{% endblock %}
+
+{% block content %}
+{% macro render_picker(label, input_name, selected_ids, selected_items, options, search_placeholder, empty_label, max_select=0) -%}
+<label
+  class="role-field"
+  data-picker-field
+  data-picker-empty-label="{{ empty_label }}"
+  data-picker-max="{{ max_select }}">
+  <span class="role-field-label">{{ label }}</span>
+  <div class="role-picker-surface">
+    <div class="role-picker-toolbar">
+      <input
+        class="role-filter-input"
+        type="text"
+        placeholder="{{ search_placeholder }}"
+        data-picker-filter>
+      <span class="role-picker-count" data-picker-count>
+        {% if selected_items %}
+          {% if max_select == 1 %}
+            Seçildi
+          {% else %}
+            {{ selected_items | length }} seçili
+          {% endif %}
+        {% else %}
+          {{ empty_label }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="role-selection-summary" data-picker-summary>
+      {% if selected_items %}
+        {% for item in selected_items %}
+        <button type="button" class="role-chip" title="{{ item.item_id }}">
+          <span class="role-chip-dot" style="background: {{ item.item_color }}"></span>
+          <span>{{ item.item_name }}</span>
+          <span class="role-chip-remove">x</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        <span class="role-picker-placeholder">{{ empty_label }}</span>
+      {% endif %}
+    </div>
+    <div class="role-option-grid" data-picker-options>
+      {% for item in options %}
+      {% set is_selected = item.item_id in selected_ids %}
+      <button
+        type="button"
+        class="role-option-card {% if is_selected %}is-selected{% endif %}"
+        data-picker-option
+        data-option-id="{{ item.item_id }}"
+        data-option-name="{{ item.item_name }}"
+        data-option-subtitle="{{ item.item_subtitle }}"
+        data-option-color="{{ item.item_color }}"
+        data-option-search="{{ item.item_search }}"
+        aria-pressed="{% if is_selected %}true{% else %}false{% endif %}">
+        <span class="role-option-card-dot" style="background: {{ item.item_color }}"></span>
+        <span class="role-option-card-text">
+          <strong>{{ item.item_name }}</strong>
+          <span>{{ item.item_subtitle }}</span>
+        </span>
+        <span class="role-option-card-state" data-picker-check>
+          {% if is_selected %}Seçildi{% else %}Ekle{% endif %}
+        </span>
+      </button>
+      {% endfor %}
+      <div class="role-option-empty" data-picker-empty {% if options %}hidden{% endif %}>
+        Aramana uyan seçenek bulunamadı.
+      </div>
+    </div>
+    <select class="role-native-select" name="{{ input_name }}" {% if max_select != 1 %}multiple{% endif %} data-picker-select tabindex="-1" aria-hidden="true">
+      {% for item in options %}
+      <option value="{{ item.item_id }}" {% if item.item_id in selected_ids %}selected{% endif %}>{{ item.item_name }}</option>
+      {% endfor %}
+      {% for sel in selected_items %}
+      {% set found = namespace(val=false) %}
+      {% for opt in options %}
+        {% if opt.item_id == sel.item_id %}{% set found.val = true %}{% endif %}
+      {% endfor %}
+      {% if not found.val %}
+      <option value="{{ sel.item_id }}" selected>{{ sel.item_name }}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+</label>
+{%- endmacro %}
+
+{% if saved %}
+<section class="flash success">Seviye sistemi ayarları kaydedildi.</section>
+{% endif %}
+{% if reward_sync_requested %}
+<section class="flash success">Ödül rolleri eşitleme isteği kuyruğa alındı.</section>
+{% endif %}
+{% if reset %}
+<section class="flash success">Seviye verileri sıfırlandı. Yeni XP birikimi bu andan itibaren başlayacak.</section>
+{% endif %}
+
+<div class="nx-grid-4 nx-mb-md">
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">Backfill Durumu</span>
+    <div class="nx-stat-block__value">{{ status.status_label }}</div>
+    <div class="nx-stat-block__note">Ses satırı: {{ status.processed_voice_rows }} · Metin satırı: {{ status.processed_text_rows }}</div>
+  </div>
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">Backfill Başlangıcı</span>
+    <div class="nx-stat-block__value">{{ status.job_started_at_label }}</div>
+    <div class="nx-stat-block__note">Ses cutoff: {{ status.voice_cutoff_at_label }}</div>
+  </div>
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">Ödül Rolü Eşitleme</span>
+    <div class="nx-stat-block__value">{{ status.reward_sync_status_label }}</div>
+    <div class="nx-stat-block__note">İstek: {{ status.reward_sync_requested_at_label }}</div>
+  </div>
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">Aktiflik</span>
+    <div class="nx-stat-block__value">{{ "Açık" if rank_config.enabled else "Kapalı" }}</div>
+    <div class="nx-stat-block__note">Ödül rolü: {{ "Açık" if rank_config.rewards.roleRewardsEnabled else "Kapalı" }}</div>
+  </div>
+</div>
+
+{% if status.last_error %}
+<section class="flash danger">Backfill hatası: {{ status.last_error }}</section>
+{% endif %}
+{% if status.reward_sync_last_error %}
+<section class="flash danger">Ödül rolü eşitleme hatası: {{ status.reward_sync_last_error }}</section>
+{% endif %}
+
+<form class="settings-form" method="post" action="/levels" id="levels-form">
+  <section class="panel">
+    <div class="panel-head"><h3>Genel Ayarlar</h3><p>Sistemin temel çalışma parametreleri</p></div>
+    <div class="form-grid">
+      <label class="toggle-field">
+        <span class="toggle-field__text">Sistem aktif</span>
+        <input type="checkbox" name="rank_enabled" {% if rank_config.enabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label>Temel XP<input type="number" name="rank_base_xp" value="{{ rank_config.curve.baseXp }}"></label>
+      <label>Doğrusal XP<input type="number" name="rank_linear_xp" value="{{ rank_config.curve.linearXp }}"></label>
+      <label>Karesel XP<input type="number" name="rank_quadratic_xp" value="{{ rank_config.curve.quadraticXp }}"></label>
+      <label>Panel Sayfa Boyutu<input type="number" name="rank_panel_page_size" value="{{ rank_config.leaderboard.panelPageSize }}"></label>
+      <label>Komut Top Boyutu<input type="number" name="rank_command_top_size" value="{{ rank_config.leaderboard.commandTopSize }}"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Metin XP</h3><p>Sıkı anti-spam kuralları ve ignore alanları</p></div>
+    <div class="form-grid">
+      <label class="toggle-field">
+        <span class="toggle-field__text">Metin XP aktif</span>
+        <input type="checkbox" name="rank_text_enabled" {% if rank_config.text.enabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label>Geçerli Mesaj XP<input type="number" name="rank_text_xp_per_message" value="{{ rank_config.text.xpPerEligibleMessage }}"></label>
+      <label>Cooldown (sn)<input type="number" name="rank_text_cooldown_seconds" value="{{ rank_config.text.cooldownSeconds }}"></label>
+      <label>Min. Normalize Uzunluk<input type="number" name="rank_text_min_length" value="{{ rank_config.text.minNormalizedLength }}"></label>
+      <label>Tekrar Penceresi (dk)<input type="number" name="rank_text_duplicate_window_minutes" value="{{ rank_config.text.duplicateWindowMinutes }}"></label>
+      <label>Saatlik Geçerli Mesaj Tavanı<input type="number" name="rank_text_hourly_cap" value="{{ rank_config.text.hourlyEligibleCap }}"></label>
+      {{ render_picker("Ignore Metin Kanalları", "rank_text_ignored_channel_ids", rank_config.text.ignoredChannelIds, selected_items.rankIgnoredChannelIds, text_channel_picker_options, "Kanal ara ve seç", "Kanal seçilmedi") }}
+      {{ render_picker("Ignore Kategoriler", "rank_text_ignored_category_ids", rank_config.text.ignoredCategoryIds, selected_items.rankIgnoredCategoryIds, category_picker_options, "Kategori ara ve seç", "Kategori seçilmedi") }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Ses XP</h3><p>Sadece aktif ses süresinden XP akışı</p></div>
+    <div class="form-grid">
+      <label class="toggle-field">
+        <span class="toggle-field__text">Ses XP aktif</span>
+        <input type="checkbox" name="rank_voice_enabled" {% if rank_config.voice.enabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label>Dakika Başına XP<input type="number" name="rank_voice_xp_per_minute" value="{{ rank_config.voice.xpPerActiveMinute }}"></label>
+      <label>Min. Ödül Parçası (sn)<input type="number" name="rank_voice_min_chunk_seconds" value="{{ rank_config.voice.minAwardChunkSeconds }}"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Ödüller</h3><p>Rol ödülleri ve seviye mesajları tamamen bağımsız yönetilir</p></div>
+    <div class="form-grid">
+      <label class="toggle-field">
+        <span class="toggle-field__text">Ödül rolleri aktif</span>
+        <input type="checkbox" name="rank_rewards_enabled" {% if rank_config.rewards.roleRewardsEnabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label class="toggle-field">
+        <span class="toggle-field__text">Seviye mesajları aktif</span>
+        <input type="checkbox" name="rank_level_messages_enabled" {% if rank_config.rewards.levelUpMessagesEnabled %}checked{% endif %}>
+        <span class="toggle-field__indicator" aria-hidden="true"></span>
+      </label>
+      <label>
+        Rol Modu
+        <select name="rank_role_mode">
+          <option value="highest_only" {% if rank_config.rewards.roleMode == 'highest_only' %}selected{% endif %}>Sadece en yüksek rol</option>
+          <option value="stacking" {% if rank_config.rewards.roleMode == 'stacking' %}selected{% endif %}>Biriken roller</option>
+        </select>
+      </label>
+      {{ render_picker("Seviye Mesaj Kanalı", "rank_announcement_channel_id", [rank_config.rewards.announcementChannelId] if rank_config.rewards.announcementChannelId else [], selected_items.rankAnnouncementChannelId, text_channel_picker_options, "Kanal ara ve seç", "Kanal seçilmedi", 1) }}
+    </div>
+
+    <div class="rank-reward-grid">
+      <article class="panel rank-reward-panel">
+        <div class="panel-head"><h3>Ses Ödül Rolleri</h3><p>Seviye ve rol eşleşmelerini girin</p></div>
+        <div class="rank-reward-rows">
+          {% for row in voice_reward_rows %}
+          <div class="rank-reward-row">
+            <input type="number" min="0" name="voice_reward_levels" value="{{ row.level if row.level else '' }}" placeholder="Seviye">
+            <select name="voice_reward_role_ids">
+              <option value="">Rol seç...</option>
+              {% for role in role_options %}
+              <option value="{{ role.role_id }}" {% if row.role_id == role.role_id %}selected{% endif %}>{{ role.role_name }} - {{ role.role_id }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="panel rank-reward-panel">
+        <div class="panel-head"><h3>Metin Ödül Rolleri</h3><p>Seviye ve rol eşleşmelerini girin</p></div>
+        <div class="rank-reward-rows">
+          {% for row in text_reward_rows %}
+          <div class="rank-reward-row">
+            <input type="number" min="0" name="text_reward_levels" value="{{ row.level if row.level else '' }}" placeholder="Seviye">
+            <select name="text_reward_role_ids">
+              <option value="">Rol seç...</option>
+              {% for role in role_options %}
+              <option value="{{ role.role_id }}" {% if row.role_id == role.role_id %}selected{% endif %}>{{ role.role_name }} - {{ role.role_id }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+    </div>
+  </section>
+
+</form>
+
+<div class="action-triplet action-triplet--balanced">
+  <form method="post" action="/levels/sync-rewards" class="action-slot action-slot--left">
+    <button type="submit" class="primary-button secondary-button action-button">
+      <i class="fas fa-wand-magic-sparkles"></i>
+      <span>Ödül Rollerini Eşitle</span>
+    </button>
+  </form>
+  <div class="action-slot action-slot--center">
+    <button type="submit" form="levels-form" class="primary-button action-button">
+      <i class="fas fa-floppy-disk"></i>
+      <span>Kaydet</span>
+    </button>
+  </div>
+  <form
+    method="post"
+    action="/levels/reset"
+    class="action-slot action-slot--right"
+    onsubmit="return confirm('Tüm seviye verileri sıfırlanacak. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?');">
+    <button type="submit" class="primary-button danger-button action-button">
+      <i class="fas fa-rotate-left"></i>
+      <span>Seviye Verilerini Sıfırla</span>
+    </button>
+  </form>
+</div>
+{% endblock %}

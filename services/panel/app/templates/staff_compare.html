@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Karşılaştır{% endblock %}
+{% block heading %}Staff Karşılaştır{% endblock %}
+{% block subheading %}İki yetkiliyi aynı periyotta yan yana ölçün{% endblock %}
+
+{% block content %}
+<div class="nx-toolbar nx-mb-md" data-nx="tile">
+  <form method="get" class="nx-toolbar__form">
+    <label class="nx-toolbar__field">
+      <span>Periyot</span>
+      <select name="period" class="nx-toolbar__select">
+        <option value="day" {% if comparison.period == 'day' %}selected{% endif %}>Gün</option>
+        <option value="week" {% if comparison.period == 'week' %}selected{% endif %}>Hafta</option>
+        <option value="month" {% if comparison.period == 'month' %}selected{% endif %}>Ay</option>
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Sol Yetkili</span>
+      <select name="left_user_id" class="nx-toolbar__select">
+        {% for option in comparison.options %}
+        <option value="{{ option.user_id }}" {% if comparison.selected_left_user_id == option.user_id %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Sağ Yetkili</span>
+      <select name="right_user_id" class="nx-toolbar__select">
+        {% for option in comparison.options %}
+        <option value="{{ option.user_id }}" {% if comparison.selected_right_user_id == option.user_id %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="nx-toolbar__button">Karşılaştır</button>
+  </form>
+</div>
+
+{% if comparison.has_data %}
+<div class="nx-grid-3 nx-mb-md">
+  {% for card in comparison.summary_cards %}
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">{{ card.label }}</span>
+    <div class="nx-stat-block__value">{{ card.value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="nx-compare-stage nx-mb-md">
+  <article class="nx-compare-card nx-compare-card--left" data-nx="tile">
+    <div class="nx-compare-card__eyebrow">Sol Panel</div>
+    <div class="nx-compare-card__identity">
+      {% if comparison.left.avatar_url %}
+      <img src="{{ comparison.left.avatar_url }}" alt="{{ comparison.left.display_name }}">
+      {% else %}
+      <span class="nx-compare-card__avatar">{{ comparison.left.display_name[:1] }}</span>
+      {% endif %}
+      <div>
+        <strong>{{ comparison.left.display_name }}</strong>
+        <span>Skor {{ comparison.left.impact_score }}</span>
+      </div>
+    </div>
+  </article>
+
+  <div class="nx-compare-stage__versus" data-nx="tile">
+    <span>Karşı Karşıya</span>
+    <strong>VS</strong>
+    <small>Her kartta sol ve sağ isimleri ayrı ayrı görünür.</small>
+  </div>
+
+  <article class="nx-compare-card nx-compare-card--right" data-nx="tile">
+    <div class="nx-compare-card__eyebrow">Sağ Panel</div>
+    <div class="nx-compare-card__identity">
+      {% if comparison.right.avatar_url %}
+      <img src="{{ comparison.right.avatar_url }}" alt="{{ comparison.right.display_name }}">
+      {% else %}
+      <span class="nx-compare-card__avatar">{{ comparison.right.display_name[:1] }}</span>
+      {% endif %}
+      <div>
+        <strong>{{ comparison.right.display_name }}</strong>
+        <span>Skor {{ comparison.right.impact_score }}</span>
+      </div>
+    </div>
+  </article>
+</div>
+
+<div class="nx-compare-metrics">
+  {% for item in comparison.metrics %}
+  <article class="nx-compare-metric" data-nx="tile">
+    <div class="nx-compare-metric__head">
+      <div>
+        <strong>{{ item.label }}</strong>
+        <p>{{ item.note }}</p>
+      </div>
+      <span class="nx-badge {{ item.winner_tone }}">
+        {{ item.winner_label }}
+      </span>
+    </div>
+
+    <div class="nx-compare-metric__duel">
+      <section class="nx-compare-side nx-compare-side--left">
+        <div class="nx-compare-side__top">
+          <span class="nx-compare-side__label">Sol</span>
+          <strong>{{ comparison.left.display_name }}</strong>
+        </div>
+        <div class="nx-compare-metric__row">
+          <span>Değer</span>
+          <strong>{{ item.left_display }}</strong>
+        </div>
+        <div class="nx-bar__track nx-mb-sm">
+          <div class="nx-bar__fill" data-nx-bar="{{ item.left_percent }}"></div>
+        </div>
+      </section>
+
+      <section class="nx-compare-side nx-compare-side--right">
+        <div class="nx-compare-side__top">
+          <span class="nx-compare-side__label">Sağ</span>
+          <strong>{{ comparison.right.display_name }}</strong>
+        </div>
+        <div class="nx-compare-metric__row">
+          <span>Değer</span>
+          <strong>{{ item.right_display }}</strong>
+        </div>
+        <div class="nx-bar__track">
+          <div class="nx-bar__fill" data-nx-bar="{{ item.right_percent }}"></div>
+        </div>
+      </section>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="nx-empty">Karşılaştırma için yeterli yetkili verisi yok.</div>
+{% endif %}
+{% endblock %}

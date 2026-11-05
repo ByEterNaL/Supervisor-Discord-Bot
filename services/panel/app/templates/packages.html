@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}İnceleme Paketi{% endblock %}
+{% block heading %}İnceleme Paketi{% endblock %}
+{% block subheading %}Seçilen üye için tek ekranda inceleme çıktısı oluşturun{% endblock %}
+
+{% block content %}
+<div class="nx-toolbar nx-mb-md" data-nx="tile">
+  <form method="get" class="nx-toolbar__form">
+    <label class="nx-toolbar__field nx-toolbar__field--grow">
+      <span>Üye</span>
+      <select name="user_id" class="nx-toolbar__select">
+        {% for option in package.member_options %}
+        <option value="{{ option.user_id }}" {% if package.selected_user_id == option.user_id %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Periyot</span>
+      <select name="period" class="nx-toolbar__select">
+        <option value="day" {% if package.period == 'day' %}selected{% endif %}>Gün</option>
+        <option value="week" {% if package.period == 'week' %}selected{% endif %}>Hafta</option>
+        <option value="month" {% if package.period == 'month' %}selected{% endif %}>Ay</option>
+      </select>
+    </label>
+    <button type="submit" class="nx-toolbar__button">Paket Oluştur</button>
+    {% if package.has_data %}
+    <a href="{{ package.export_path }}" class="nx-toolbar__button nx-toolbar__button--ghost">JSON İndir</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if package.has_data %}
+<div class="nx-hero nx-mb-md" data-nx="tile">
+  <div class="nx-hero__eyebrow">INVESTIGATION PACK</div>
+  <h1 class="nx-hero__title">{{ package.member.display_name }}</h1>
+  <p class="nx-hero__desc">{{ package.member_type_label }} · Son görünüm tek pakette toplandı.</p>
+</div>
+
+<div class="nx-grid-4 nx-mb-md">
+  {% for card in package.summary_cards %}
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">{{ card.label }}</span>
+    <div class="nx-stat-block__value">{{ card.value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="nx-grid-2 nx-mb-md">
+  <section class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#128266;</div>
+      <div>
+        <h2 class="nx-section__title">En Aktif Kanallar</h2>
+        <p class="nx-section__subtitle">Ses yoğunluğunun öne çıktığı alanlar</p>
+      </div>
+    </div>
+    <div class="nx-roster">
+      {% for item in package.top_channels %}
+      <div class="nx-roster-row" data-nx="tile">
+        <div class="nx-roster-row__info">
+          <div class="nx-roster-row__name">{{ item.channel_name or item.channel_id }}</div>
+          <div class="nx-roster-row__meta">Toplam {{ item.total_hours }} saat</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Kanal verisi yok.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#9878;</div>
+      <div>
+        <h2 class="nx-section__title">Moderasyon Akışı</h2>
+        <p class="nx-section__subtitle">Periyot içindeki son işlemler</p>
+      </div>
+    </div>
+    <div class="nx-roster">
+      {% for item in package.moderation_activity %}
+      <div class="nx-roster-row" data-nx="tile">
+        <div class="nx-roster-row__info">
+          <div class="nx-roster-row__name">{{ item.action_label }}</div>
+          <div class="nx-roster-row__meta">{{ item.created_at_label }} · {{ item.created_at_relative }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Moderasyon kaydı yok.</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<div class="nx-grid-2 nx-mb-md">
+  <section class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#9997;</div>
+      <div>
+        <h2 class="nx-section__title">Mesaj Denetimi</h2>
+        <p class="nx-section__subtitle">Düzenlenen veya silinen son mesajlar</p>
+      </div>
+    </div>
+    <div class="nx-message-audit-list">
+      {% for item in package.message_events %}
+      <article class="nx-message-event" data-nx="tile">
+        <div class="nx-message-event__top">
+          <div class="nx-message-event__author">
+            <div>
+              <strong>{{ item.event_label }}</strong>
+              <div class="nx-message-event__meta">{{ item.channel_name }}</div>
+            </div>
+          </div>
+          <div class="nx-message-event__status">
+            <span>{{ item.created_at_label }}</span>
+          </div>
+        </div>
+        <div class="nx-message-event__body {% if item.event_type == 'delete' %}nx-message-event__body--single{% endif %}">
+          <div class="nx-message-event__panel">
+            <span class="nx-message-event__panel-label">Önce</span>
+            <p>{{ item.before_preview }}</p>
+          </div>
+          {% if item.event_type == 'edit' %}
+          <div class="nx-message-event__panel">
+            <span class="nx-message-event__panel-label">Sonra</span>
+            <p>{{ item.after_preview }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="nx-empty">Mesaj denetim kaydı yok.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">&#128221;</div>
+      <div>
+        <h2 class="nx-section__title">Rol ve İzin Geçmişi</h2>
+        <p class="nx-section__subtitle">Son rol akışları</p>
+      </div>
+    </div>
+    <div class="nx-role-history">
+      {% for item in package.role_history %}
+      <article class="nx-role-history-entry" data-nx="tile">
+        <div class="nx-role-history-entry__top">
+          <div class="nx-role-history-entry__role">
+            <span class="nx-role-history-entry__title">{{ item.role_name }}</span>
+            <span class="nx-badge" style="border-color: {{ item.action_tone }}; color: {{ item.action_tone }};">{{ item.action_label }}</span>
+          </div>
+          <div class="nx-role-history-entry__time">
+            <strong>{{ item.created_at_label }}</strong>
+            <span>{{ item.created_at_relative }}</span>
+          </div>
+        </div>
+        <div class="nx-role-history-entry__chips">
+          {% for summary in item.summaries %}
+          <span class="nx-badge nx-role-history-entry__chip {% if summary.is_risky %}nx-role-history-entry__chip--risk{% endif %}">{{ summary.text }}</span>
+          {% endfor %}
+        </div>
+      </article>
+      {% else %}
+      <div class="nx-empty">Rol geçmişi bulunmuyor.</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="nx-section" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">&#127903;</div>
+    <div>
+      <h2 class="nx-section__title">Ticket İzleri</h2>
+      <p class="nx-section__subtitle">İlgili ticket oturumları</p>
+    </div>
+  </div>
+  <div class="nx-roster">
+    {% for item in package.tickets %}
+    <div class="nx-roster-row" data-nx="tile">
+      <div class="nx-roster-row__info">
+        <div class="nx-roster-row__name">#{{ item.channel_id }}</div>
+        <div class="nx-roster-row__meta">{{ item.status }} · {{ item.created_at_label }}</div>
+      </div>
+    </div>
+    {% else %}
+    <div class="nx-empty">Ticket kaydı yok.</div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="nx-empty">İnceleme paketi oluşturmak için kayıtlı bir üye seçin.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: supervisor-postgres
+    environment:
+      POSTGRES_DB: discord_supervisor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7
+    container_name: supervisor-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    env_file:
+      - .env
+    command: ["node", "dist/services/bot/src/index.js"]
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    env_file:
+      - .env
+    command: ["node", "dist/services/worker/src/index.js"]
+    depends_on:
+      - postgres
+      - redis
+
+  panel:
+    build:
+      context: .
+      dockerfile: services/panel/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres-data:
+  redis-data:
+

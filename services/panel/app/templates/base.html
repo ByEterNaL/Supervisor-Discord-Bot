@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Supervisor Discord Bot{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=10">
+    <link rel="stylesheet" href="/static/css/modern.css?v=21">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <div id="nx-page-loader" class="nx-page-loader" aria-hidden="true">
+      <div class="nx-page-loader__spinner" aria-hidden="true"></div>
+    </div>
+
+    <div id="nx-confirm-modal" class="nx-confirm" role="dialog" aria-modal="true" aria-labelledby="nx-confirm-title" aria-describedby="nx-confirm-message" hidden>
+      <div class="nx-confirm__backdrop" data-confirm-dismiss></div>
+      <div class="nx-confirm__card" data-nx="tile" role="document">
+        <div class="nx-confirm__icon" data-confirm-icon>
+          <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <h3 id="nx-confirm-title" class="nx-confirm__title" data-confirm-title>Emin misiniz?</h3>
+        <p id="nx-confirm-message" class="nx-confirm__message" data-confirm-message>Bu işlem geri alınamaz.</p>
+        <div class="nx-confirm__actions">
+          <button type="button" class="nx-confirm__btn nx-confirm__btn--ghost" data-confirm-cancel>
+            <i class="fas fa-xmark"></i>
+            <span data-confirm-cancel-label>Vazgeç</span>
+          </button>
+          <button type="button" class="nx-confirm__btn nx-confirm__btn--danger" data-confirm-accept>
+            <i class="fas fa-check"></i>
+            <span data-confirm-accept-label>Onayla</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <h1>Supervisor Discord Bot</h1>
+            <p>Control room panel</p>
+          </div>
+        </div>
+        <div class="nav-shell">
+          <nav class="nav" id="sidebar-nav" data-sidebar-nav>
+            <a href="/health" class="{% if active_section == 'health' %}active{% endif %}">Sistem Sağlığı</a>
+            <a href="/overview" class="{% if active_section == 'overview' %}active{% endif %}">Genel Bakış</a>
+            <a href="/levels" class="{% if active_section == 'levels' %}active{% endif %}">Seviye Sistemi</a>
+            <a href="/staff" class="{% if active_section == 'staff' %}active{% endif %}">Yetkililer</a>
+            <a href="/staff-ranks" class="{% if active_section == 'staff-ranks' %}active{% endif %}">Yetkili Rütbeleri</a>
+            <a href="/staff-compare" class="{% if active_section == 'staff-compare' %}active{% endif %}">Staff Karşılaştır</a>
+            <a href="/message-audit" class="{% if active_section == 'message-audit' %}active{% endif %}">Mesaj Denetimi</a>
+            <a href="/packages" class="{% if active_section == 'packages' %}active{% endif %}">İnceleme Paketi</a>
+            <a href="/members" class="{% if active_section == 'members' %}active{% endif %}">Kullanıcılar</a>
+            <a href="/member-ranks" class="{% if active_section == 'member-ranks' %}active{% endif %}">Üye Rütbeleri</a>
+            <a href="/roles" class="{% if active_section == 'roles' %}active{% endif %}">Rol Takibi</a>
+            <a href="/tickets" class="{% if active_section == 'tickets' %}active{% endif %}">Ticketlar</a>
+            <a href="/actions" class="{% if active_section == 'actions' %}active{% endif %}">Yetkiler</a>
+            <a href="/unproven" class="nav-link-split {% if active_section == 'unproven' %}active{% endif %}">
+              <span>Kanıtsız İşlemler</span>
+              <span hx-get="/api/unproven/badge" hx-trigger="load, every 10s" hx-swap="outerHTML"></span>
+            </a>
+            <a href="/voice" class="{% if active_section == 'voice' %}active{% endif %}">Ses Analizi</a>
+            <a href="/filters" class="{% if active_section == 'filters' %}active{% endif %}">Kelime Filtresi</a>
+            <a href="/channel-analysis" class="{% if active_section == 'channel-analysis' %}active{% endif %}">Kanal Analizi</a>
+            <a href="/moderation" class="{% if active_section == 'moderation' %}active{% endif %}">Moderasyon Sistemi</a>
+            <a href="/moderation-limits" class="{% if active_section == 'moderation-limits' %}active{% endif %}">Ceza Limitleri</a>
+            <a href="/yetki-duzenle" class="{% if active_section == 'yetki-duzenle' %}active{% endif %}">Yetki Düzenle</a>
+            <a href="/moderation-history" class="{% if active_section == 'moderation-history' %}active{% endif %}">Moderasyon Geçmişi</a>
+            <a href="/guards" class="{% if active_section == 'guards' %}active{% endif %}">Ultra Koruma</a>
+            <a href="/guard-logs" class="{% if active_section == 'guard-logs' %}active{% endif %}">Guard Log Merkezi</a>
+            <a href="/settings" class="{% if active_section == 'settings' %}active{% endif %}">Ayarlar</a>
+          </nav>
+        </div>
+      </aside>
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h2>{% block heading %}Dashboard{% endblock %}</h2>
+            <p>{% block subheading %}Sunucu ve staff denetim merkezi{% endblock %}</p>
+          </div>
+          {% if active_section not in ['settings', 'roles', 'filters', 'health', 'message-audit', 'packages', 'staff-compare', 'channel-analysis', 'moderation', 'moderation-history', 'moderation-limits', 'yetki-duzenle', 'guards', 'guard-logs', 'levels', 'member-ranks', 'staff-ranks'] %}
+          <div class="period-switcher">
+            <a href="{{ active_path }}?period=day" class="{% if period == 'day' %}active{% endif %}">Gün</a>
+            <a href="{{ active_path }}?period=week" class="{% if period == 'week' %}active{% endif %}">Hafta</a>
+            <a href="{{ active_path }}?period=month" class="{% if period == 'month' %}active{% endif %}">Ay</a>
+          </div>
+          {% endif %}
+        </header>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <script src="/static/js/dashboard.js?v=8"></script>
+    <style>
+      @keyframes nxSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .nx-page-loader {
+        position: fixed;
+        inset: 0;
+        background: rgba(11, 16, 20, 0.72);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+      }
+      .nx-page-loader.is-active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 0.12s ease, visibility 0s linear 0s;
+      }
+      .nx-page-loader__spinner {
+        width: 52px;
+        height: 52px;
+        border: 3px solid rgba(255, 157, 63, 0.18);
+        border-top-color: #ff9d3f;
+        border-radius: 50%;
+        animation: nxSpin 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+      }
+      .nx-toast {
+        position: fixed; top: 24px; right: 24px; z-index: 99999;
+        background: #16202a; border: 1px solid rgba(255, 93, 108, 0.3); border-left: 4px solid #ff5d6c;
+        color: #f0eae0; padding: 16px 20px; border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(255, 93, 108, 0.15); display: flex; align-items: center; gap: 12px;
+        min-width: 250px; max-width: 450px; transform: translateX(120%); font-size: 0.95rem; font-weight: 500;
+      }
+      .nx-toast i { color: #ff5d6c; font-size: 1.2rem; }
+    </style>
+    <script>
+      (function initPageLoader() {
+        const loader = document.getElementById('nx-page-loader');
+        if (!loader) return;
+
+        function showLoader() {
+          loader.classList.add('is-active');
+        }
+
+        function hideLoader() {
+          loader.classList.remove('is-active');
+        }
+
+        // Show the overlay while the browser waits for the next page to arrive
+        // on a normal link click. The loader is part of the current document,
+        // so it naturally goes away when the new document takes over.
+        document.addEventListener('click', (event) => {
+          if (event.defaultPrevented) return;
+          if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+
+          const anchor = event.target && event.target.closest
+            ? event.target.closest('a[href]')
+            : null;
+          if (!anchor) return;
+          if (anchor.target && anchor.target !== '' && anchor.target !== '_self') return;
+          if (anchor.hasAttribute('download')) return;
+          if (anchor.hasAttribute('hx-get') || anchor.hasAttribute('hx-post')) return;
+
+          const href = anchor.getAttribute('href') || '';
+          if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+          try {
+            const url = new URL(anchor.href, window.location.origin);
+            if (url.origin !== window.location.origin) return;
+          } catch (_err) { return; }
+
+          showLoader();
+        }, true);
+
+        // Same overlay for non-htmx form submissions
+        document.addEventListener('submit', (event) => {
+          if (event.defaultPrevented) return;
+          const form = event.target;
+          if (!form || form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+          showLoader();
+        }, true);
+
+        // Always hide when returning via back/forward cache
+        window.addEventListener('pageshow', (event) => {
+          if (event.persisted) hideLoader();
+        });
+
+        // Ensure the loader starts hidden on fresh mounts
+        hideLoader();
+      })();
+
+      (function initErrorToast() {
+        function fireToast() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const errorMsg = urlParams.get('error');
+          if (!errorMsg) return;
+
+          const toast = document.createElement('div');
+          toast.className = 'nx-toast';
+          toast.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i><span style="flex:1; line-height: 1.4;">${errorMsg}</span>`;
+          document.body.appendChild(toast);
+
+          if (typeof anime !== 'undefined') {
+            anime({ targets: toast, translateX: 0, duration: 600, easing: 'easeOutExpo' });
+            setTimeout(() => {
+              anime({ targets: toast, translateX: '120%', opacity: 0, duration: 500, easing: 'easeInExpo', complete: () => toast.remove() });
+            }, 5000);
+          }
+
+          const newUrl = new URL(window.location);
+          newUrl.searchParams.delete('error');
+          window.history.replaceState({}, document.title, newUrl.toString());
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', fireToast);
+        } else {
+          fireToast();
+        }
+      })();
+    </script>
+  </body>
+</html>

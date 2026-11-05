@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Mesaj Denetimi{% endblock %}
+{% block heading %}Mesaj Denetimi{% endblock %}
+{% block subheading %}Yetkililerin düzenlediği ve sildiği mesajları inceleyin{% endblock %}
+
+{% block content %}
+<div class="nx-toolbar nx-mb-md" data-nx="tile">
+  <form method="get" class="nx-toolbar__form">
+    <label class="nx-toolbar__field">
+      <span>Periyot</span>
+      <select name="period" class="nx-toolbar__select">
+        <option value="day" {% if audit.period == 'day' %}selected{% endif %}>Gün</option>
+        <option value="week" {% if audit.period == 'week' %}selected{% endif %}>Hafta</option>
+        <option value="month" {% if audit.period == 'month' %}selected{% endif %}>Ay</option>
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Yetkili</span>
+      <select name="author_id" class="nx-toolbar__select">
+        <option value="">Tümü</option>
+        {% for option in audit.staff_options %}
+        <option value="{{ option.user_id }}" {% if audit.selected_user_id == option.user_id %}selected{% endif %}>{{ option.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="nx-toolbar__field">
+      <span>Olay</span>
+      <select name="event_type" class="nx-toolbar__select">
+        <option value="">Tümü</option>
+        <option value="edit" {% if audit.selected_event_type == 'edit' %}selected{% endif %}>Düzenleme</option>
+        <option value="delete" {% if audit.selected_event_type == 'delete' %}selected{% endif %}>Silme</option>
+      </select>
+    </label>
+    <button type="submit" class="nx-toolbar__button">Uygula</button>
+  </form>
+</div>
+
+<div class="nx-grid-4 nx-mb-md">
+  {% for card in audit.summary_cards %}
+  <div class="nx-tile nx-tile--accent" data-nx="tile">
+    <span class="nx-stat-block__label">{{ card.label }}</span>
+    <div class="nx-stat-block__value">{{ card.value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="nx-message-audit-list">
+  {% for item in audit.events %}
+  <article class="nx-message-event" data-nx="tile">
+    <div class="nx-message-event__top">
+      <div class="nx-message-event__author">
+        {% if item.author_avatar_url %}
+        <img src="{{ item.author_avatar_url }}" alt="{{ item.author_display_name }}">
+        {% else %}
+        <span>{{ item.author_display_name[:1] }}</span>
+        {% endif %}
+        <div>
+          <strong>{{ item.author_display_name }}</strong>
+          <div class="nx-message-event__meta">{{ item.channel_name }} · Mesaj: {{ item.message_created_at_label }}</div>
+        </div>
+      </div>
+      <div class="nx-message-event__status">
+        <span class="nx-badge" style="border-color: {{ item.event_tone }}; color: {{ item.event_tone }};">{{ item.event_label }}</span>
+        <span>{{ item.created_at_label }} · {{ item.created_at_relative }}</span>
+      </div>
+    </div>
+
+    <div class="nx-message-event__body {% if item.event_type == 'delete' %}nx-message-event__body--single{% endif %}">
+      <div class="nx-message-event__panel">
+        <span class="nx-message-event__panel-label">Önce</span>
+        <p>{{ item.before_preview }}</p>
+        <small>Ek sayısı: {{ item.before_attachment_count }}</small>
+      </div>
+      {% if item.event_type == 'edit' %}
+      <div class="nx-message-event__panel">
+        <span class="nx-message-event__panel-label">Sonra</span>
+        <p>{{ item.after_preview }}</p>
+        <small>Ek sayısı: {{ item.after_attachment_count }}</small>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <div class="nx-empty">Bu filtrelerde kayıtlı düzenleme veya silme olayı yok.</div>
+  {% endfor %}
+</div>
+{% endblock %}

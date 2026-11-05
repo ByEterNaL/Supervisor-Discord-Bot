@@ -1,0 +1,18 @@
+{
+  "discord": {
+    "token": "YOUR_DISCORD_BOT_TOKEN",
+    "clientId": "YOUR_DISCORD_APPLICATION_ID",
+    "guildId": "YOUR_DISCORD_GUILD_ID",
+    "ownerId": "YOUR_DISCORD_OWNER_ID"
+  },
+  "runtime": {
+    "databaseUrl": "postgres://postgres:postgres@127.0.0.1:5432/discord_supervisor",
+    "redisUrl": "",
+    "timezone": "Europe/Istanbul",
+    "logLevel": "info"
+  },
+  "panel": {
+    "host": "127.0.0.1",
+    "port": 8000
+  }
+}

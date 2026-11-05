@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Yetki Düzenle{% endblock %}
+{% block heading %}Yetki Düzenle{% endblock %}
+{% block subheading %}Rol bazlı yetki politikalarını buradan tanımlayın; Discord rolleri boş kalacak, tüm izinler bot üzerinden takip edilecek.{% endblock %}
+
+{% macro render_role_picker(name, selected_id, options, placeholder="Rol ara...") %}
+<select name="{{ name }}" class="nx-policy-role-select" data-role-select>
+  <option value="" {% if not selected_id %}selected{% endif %}>Rol seçin…</option>
+  {% for opt in options %}
+  <option value="{{ opt.item_id }}" {% if selected_id == opt.item_id %}selected{% endif %} style="color: {{ opt.item_color }}">
+    {{ opt.item_name }}
+  </option>
+  {% endfor %}
+  {% if selected_id %}
+  {% set found = namespace(val=false) %}
+  {% for opt in options %}
+    {% if opt.item_id == selected_id %}{% set found.val = true %}{% endif %}
+  {% endfor %}
+  {% if not found.val %}
+  <option value="{{ selected_id }}" selected>Kayıp Rol #{{ selected_id }}</option>
+  {% endif %}
+  {% endif %}
+</select>
+{% endmacro %}
+
+{% block content %}
+<form method="post" action="/yetki-duzenle/save" class="nx-policy-form">
+  {% if saved %}
+  <div class="nx-toast is-visible" style="transform: translateX(0);">
+    <i class="fas fa-check-circle"></i>
+    <span>Ayarlar başarıyla kaydedildi.</span>
+  </div>
+  {% endif %}
+
+  <section class="nx-policy-section" data-nx="tile">
+    <div class="nx-section-header">
+      <div class="nx-section-icon"><i class="fas fa-shield-halved"></i></div>
+      <div>
+        <h3>Global Güvenlik Ayarları</h3>
+        <p>Sunucudaki tüm yetki kontrollerinin kök davranışını belirler.</p>
+      </div>
+    </div>
+
+    <div class="nx-policy-global-grid">
+      <label class="nx-toggle-card">
+        <input type="checkbox" name="strict_role_only" value="on" {% if strict_role_only %}checked{% endif %}>
+        <span class="nx-toggle-slider"></span>
+        <span class="nx-toggle-label">
+          <strong>Strict Role Only</strong>
+          <span>Discord native yetkileri tamamen devre dışı bırak; yalnızca panelden atanmış politika rolleri yetki versin.</span>
+        </span>
+      </label>
+
+      <div class="nx-field-group">
+        <label class="nx-field-label">Admin Whitelist (Kullanıcı ID’leri)</label>
+        <textarea
+          name="admin_whitelist_user_ids"
+          class="nx-textarea"
+          rows="3"
+          placeholder="Her satıra bir kullanıcı ID’si yazın. Bu ID’ler tüm kısıtlamalardan muaf olur.">{{ admin_whitelist_ids | join('\n') }}</textarea>
+        <p class="nx-field-hint">Satır bazlı Discord kullanıcı ID’leri. Bunlar tüm yetki kontrollerini atlar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="nx-policy-section" data-nx="tile">
+    <div class="nx-section-header">
+      <div class="nx-section-icon"><i class="fas fa-user-shield"></i></div>
+      <div>
+        <h3>Rol Politikaları</h3>
+        <p>Her policy bir Discord rolüne bağlanır ve o rolün sahiplerine yetki kapasitesi + günlük limit atanır.</p>
+      </div>
+      <button type="button" class="nx-btn-primary" data-add-policy>
+        <i class="fas fa-plus"></i> Yeni Politika Ekle
+      </button>
+    </div>
+
+    <div class="nx-policy-list" data-policy-list>
+      {% for policy in policies %}
+      <div class="nx-policy-card" data-policy-card data-index="{{ loop.index0 }}">
+        <div class="nx-policy-card__header">
+          <div class="nx-policy-card__role">
+            {{ render_role_picker("policy_" ~ loop.index0 ~ "_role_id", policy.roleId, role_picker_options) }}
+          </div>
+          <input
+            type="text"
+            name="policy_{{ loop.index0 }}_label"
+            class="nx-policy-label-input"
+            value="{{ policy.label }}"
+            placeholder="Politika etiketi (örn: Orta Yetkili)">
+          <button type="button" class="nx-policy-remove" data-remove-policy title="Politikayı sil">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+
+        <div class="nx-policy-card__body">
+          <div class="nx-policy-block">
+            <h4><i class="fas fa-bolt"></i> Yetki Kapasiteleri</h4>
+            <div class="nx-capability-grid">
+              {% for cap in capability_options %}
+              <label class="nx-guard-chip-check">
+                <input
+                  type="checkbox"
+                  name="policy_{{ loop.index0 }}_capabilities"
+                  value="{{ cap.value }}"
+                  {% if cap.value in policy.capabilities %}checked{% endif %}>
+                <span class="nx-guard-chip-check__box"></span>
+                <span class="nx-guard-chip-check__label">{{ cap.label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="nx-policy-block">
+            <h4><i class="fas fa-gauge-high"></i> Günlük Limitler</h4>
+            <div class="nx-limit-list" data-limit-list data-policy-index="{{ loop.index0 }}">
+              {% for limit in policy.dailyLimits %}
+              <div class="nx-limit-row" data-limit-row>
+                <select name="policy_{{ loop.index0 }}_limit_action_{{ loop.index0 }}" class="nx-select">
+                  {% for at in action_type_options %}
+                  <option value="{{ at.value }}" {% if at.value == limit.actionType %}selected{% endif %}>{{ at.label }}</option>
+                  {% endfor %}
+                </select>
+                <input
+                  type="number"
+                  name="policy_{{ loop.index0 }}_limit_max_{{ loop.index0 }}"
+                  class="nx-input-number"
+                  value="{{ limit.maxDaily }}"
+                  min="1"
+                  max="999">
+                <button type="button" class="nx-limit-remove" data-remove-limit title="Limiti sil">
+                  <i class="fas fa-xmark"></i>
+                </button>
+              </div>
+              {% endfor %}
+              <button type="button" class="nx-btn-ghost" data-add-limit>
+                <i class="fas fa-plus"></i> Limit Ekle
+              </button>
+            </div>
+          </div>
+
+          <div class="nx-policy-footer">
+            <label class="nx-toggle-inline">
+              <input type="checkbox" name="policy_{{ loop.index0 }}_auto_punish" value="on" {% if policy.autoPunishOnLimit %}checked{% endif %}>
+              <span class="nx-toggle-slider--sm"></span>
+              <span>Limit aşılınca otomatik cezalandır</span>
+            </label>
+            <div class="nx-cooldown-field">
+              <label>Bekleme süresi (sn)</label>
+              <input type="number" name="policy_{{ loop.index0 }}_cooldown" value="{{ policy.cooldownSeconds }}" min="0" max="3600" class="nx-input-number">
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <template id="policy-card-template">
+      <div class="nx-policy-card" data-policy-card data-index="__IDX__">
+        <div class="nx-policy-card__header">
+          <div class="nx-policy-card__role">
+            <select name="policy___IDX___role_id" class="nx-policy-role-select" data-role-select>
+              <option value="">Rol seçin…</option>
+              {% for opt in role_picker_options %}
+              <option value="{{ opt.item_id }}" style="color: {{ opt.item_color }}">{{ opt.item_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <input type="text" name="policy___IDX___label" class="nx-policy-label-input" value="" placeholder="Politika etiketi">
+          <button type="button" class="nx-policy-remove" data-remove-policy title="Politikayı sil">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <div class="nx-policy-card__body">
+          <div class="nx-policy-block">
+            <h4><i class="fas fa-bolt"></i> Yetki Kapasiteleri</h4>
+            <div class="nx-capability-grid">
+              {% for cap in capability_options %}
+              <label class="nx-guard-chip-check">
+                <input type="checkbox" name="policy___IDX___capabilities" value="{{ cap.value }}">
+                <span class="nx-guard-chip-check__box"></span>
+                <span class="nx-guard-chip-check__label">{{ cap.label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="nx-policy-block">
+            <h4><i class="fas fa-gauge-high"></i> Günlük Limitler</h4>
+            <div class="nx-limit-list" data-limit-list data-policy-index="__IDX__">
+              <button type="button" class="nx-btn-ghost" data-add-limit>
+                <i class="fas fa-plus"></i> Limit Ekle
+              </button>
+            </div>
+          </div>
+          <div class="nx-policy-footer">
+            <label class="nx-toggle-inline">
+              <input type="checkbox" name="policy___IDX___auto_punish" value="on" checked>
+              <span class="nx-toggle-slider--sm"></span>
+              <span>Limit aşılınca otomatik cezalandır</span>
+            </label>
+            <div class="nx-cooldown-field">
+              <label>Bekleme süresi (sn)</label>
+              <input type="number" name="policy___IDX___cooldown" value="60" min="0" max="3600" class="nx-input-number">
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template id="limit-row-template">
+      <div class="nx-limit-row" data-limit-row>
+        <select name="policy___PIDX___limit_action___LIDX__" class="nx-select">
+          {% for at in action_type_options %}
+          <option value="{{ at.value }}">{{ at.label }}</option>
+          {% endfor %}
+        </select>
+        <input type="number" name="policy___PIDX___limit_max___LIDX__" value="5" min="1" max="999" class="nx-input-number">
+        <button type="button" class="nx-limit-remove" data-remove-limit title="Limiti sil">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+    </template>
+  </section>
+
+  <div class="nx-form-actions">
+    <button type="submit" class="nx-btn-primary nx-btn-lg">
+      <i class="fas fa-floppy-disk"></i> Kaydet
+    </button>
+  </div>
+</form>
+
+<script>
+(function() {
+  const list = document.querySelector('[data-policy-list]');
+  const cardTemplate = document.getElementById('policy-card-template');
+  const limitTemplate = document.getElementById('limit-row-template');
+
+  function getNextPolicyIndex() {
+    const cards = list.querySelectorAll('[data-policy-card]');
+    let max = -1;
+    cards.forEach(c => {
+      const idx = parseInt(c.dataset.index || '-1', 10);
+      if (idx > max) max = idx;
+    });
+    return max + 1;
+  }
+
+  function replaceIndex(html, idx) {
+    return html.replace(/__IDX__/g, idx);
+  }
+
+  function replaceLimitIndex(html, pidx, lidx) {
+    return html.replace(/__PIDX__/g, pidx).replace(/__LIDX__/g, lidx);
+  }
+
+  document.querySelector('[data-add-policy]')?.addEventListener('click', () => {
+    const idx = getNextPolicyIndex();
+    const html = replaceIndex(cardTemplate.innerHTML, idx);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html.trim();
+    const card = wrapper.firstElementChild;
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    list.appendChild(card);
+    requestAnimationFrame(() => {
+      card.style.transition = 'opacity .25s ease, transform .25s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    });
+  });
+
+  list.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('[data-remove-policy]');
+    if (removeBtn) {
+      const card = removeBtn.closest('[data-policy-card]');
+      if (card) {
+        card.style.transition = 'opacity .2s ease, transform .2s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(8px)';
+        setTimeout(() => card.remove(), 220);
+      }
+    }
+  });
+
+  list.addEventListener('click', (e) => {
+    const addLimitBtn = e.target.closest('[data-add-limit]');
+    if (addLimitBtn) {
+      const limitList = addLimitBtn.closest('[data-limit-list]');
+      const pidx = limitList.dataset.policyIndex;
+      const existing = limitList.querySelectorAll('[data-limit-row]').length;
+      const lidx = existing;
+      const html = replaceLimitIndex(limitTemplate.innerHTML, pidx, lidx);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html.trim();
+      const row = wrapper.firstElementChild;
+      limitList.insertBefore(row, addLimitBtn);
+    }
+  });
+
+  list.addEventListener('click', (e) => {
+    const removeLimitBtn = e.target.closest('[data-remove-limit]');
+    if (removeLimitBtn) {
+      const row = removeLimitBtn.closest('[data-limit-row]');
+      if (row) row.remove();
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Yetkiler{% endblock %}
+{% block heading %}Yetki Kullanımı{% endblock %}
+{% block subheading %}Ban, kick ve timeout atma oranları{% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="nx-hero" data-nx="tile">
+  <div class="nx-hero__eyebrow">⚠ {{ scene.copy.eyebrow }}</div>
+  <h1 class="nx-hero__title">{{ scene.copy.title }}</h1>
+  <p class="nx-hero__desc">{{ scene.copy.description }}</p>
+  <div class="nx-hero__stats">
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value nx-stat-block__value--glow-red count-up" data-value="{{ scene.summary.total_actions }}">0</span>
+      <span class="nx-hero__stat-label">Toplam Aksiyon</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ scene.summary.bans }}</span>
+      <span class="nx-hero__stat-label">Ban</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ scene.summary.kicks }}</span>
+      <span class="nx-hero__stat-label">Kick</span>
+    </div>
+    <div class="nx-hero__stat" data-nx="tile">
+      <span class="nx-hero__stat-value">{{ scene.summary.dominant_label }}</span>
+      <span class="nx-hero__stat-label">Dominant Tip</span>
+    </div>
+  </div>
+</div>
+
+<!-- Impact Spectrum -->
+<div class="nx-grid-3 nx-mb-md">
+  {% for item in scene.mix %}
+  <div class="nx-impact-card" data-nx="tile" style="border-top-color: {{ item.tone }};">
+    <span class="nx-impact-card__label" style="color: {{ item.tone }};">{{ item.label }}</span>
+    <div class="nx-impact-card__row">
+      <span class="nx-impact-card__count">{{ item.count }}</span>
+      <span class="nx-impact-card__pct" style="color: {{ item.tone }};">{{ item.percentage }}%</span>
+    </div>
+    <div class="nx-impact-card__bar">
+      <div class="nx-impact-card__fill" data-nx-bar="{{ item.percentage }}" style="background: {{ item.tone }};"></div>
+    </div>
+    <span class="nx-impact-card__note">{{ item.note }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Action Wave Timeline -->
+<div class="nx-section nx-mb-md" data-nx="tile">
+  <div class="nx-section__header">
+    <div class="nx-section__icon">📈</div>
+    <h2 class="nx-section__title">Zaman Çizelgesi</h2>
+  </div>
+
+  <div class="nx-timeline-h">
+    {% for item in scene.timeline %}
+    <div class="nx-timeline-h__col" data-nx="tile">
+      <div class="nx-timeline-h__bar">
+        <div class="nx-timeline-h__seg nx-timeline-h__seg--ban" style="height: {{ item.ban_percentage }}%;"></div>
+        <div class="nx-timeline-h__seg nx-timeline-h__seg--kick" style="height: {{ item.kick_percentage }}%;"></div>
+        <div class="nx-timeline-h__seg nx-timeline-h__seg--timeout" style="height: {{ item.timeout_percentage }}%;"></div>
+      </div>
+      <span class="nx-timeline-h__total">{{ item.total }}</span>
+      <span class="nx-timeline-h__label">{{ item.label }}</span>
+    </div>
+    {% else %}
+    <div class="nx-empty" style="width: 100%;">Bu periyotta zaman akisi verisi yok.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Main Grid: Leaders + Peak Windows -->
+<div class="nx-grid-2">
+  <!-- Authority Leaders -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">👮</div>
+      <h2 class="nx-section__title">Öne Çıkan Yetkililer</h2>
+    </div>
+
+    <div class="nx-roster">
+      {% for item in scene.leaders %}
+      <div class="nx-roster-row" data-nx="tile">
+        <div class="nx-roster-row__rank {% if item.rank <= 3 %}nx-roster-row__rank--{{ item.rank }}{% endif %}">{{ item.rank }}</div>
+        <div class="nx-roster-row__avatar">
+          {% if item.avatar_url %}
+          <img src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+          {% else %}
+          {{ item.initials }}
+          {% endif %}
+        </div>
+        <div class="nx-roster-row__info">
+          <div class="nx-roster-row__name">{{ item.display_name }}</div>
+          <div class="nx-roster-row__meta">{{ item.total_actions }} aksiyon</div>
+        </div>
+        <div class="nx-roster-row__metrics">
+          <div class="nx-roster-row__metric">
+            <div class="nx-bar__track" style="width: 100px;">
+              <div class="nx-bar__fill" data-nx-bar="{{ item.percentage }}" style="background: #ff5d6c;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="nx-roster-row__badges">
+          <span class="nx-badge nx-badge--red">{{ item.bans }}B</span>
+          <span class="nx-badge nx-badge--orange">{{ item.kicks }}K</span>
+          <span class="nx-badge nx-badge--teal">{{ item.timeouts }}T</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Yetki kullanim verisi yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Peak Windows -->
+  <div class="nx-section" data-nx="tile">
+    <div class="nx-section__header">
+      <div class="nx-section__icon">⚡</div>
+      <h2 class="nx-section__title">Yoğun Saatler</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      {% for item in scene.hot_windows %}
+      <div class="nx-peak" data-nx="tile">
+        <div class="nx-peak__header">
+          <span class="nx-peak__label">{{ item.full_label }}</span>
+          <span class="nx-peak__total">{{ item.total }}</span>
+        </div>
+        <div class="nx-peak__breakdown">
+          <span>Ban {{ item.ban_percentage }}%</span>
+          <span>Kick {{ item.kick_percentage }}%</span>
+          <span>Timeout {{ item.timeout_percentage }}%</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="nx-empty">Gosterilecek yogun pencere yok.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
